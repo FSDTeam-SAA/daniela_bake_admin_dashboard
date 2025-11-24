@@ -199,7 +199,7 @@ export function CategoryDialog({
                   <Button
                     type="button"
                     size="sm"
-                    className="bg-blue-500 hover:bg-blue-600"
+                    className="gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white"
                     asChild
                   >
                     <label htmlFor="category-image" className="cursor-pointer">
@@ -229,7 +229,7 @@ export function CategoryDialog({
             <Button
               type="submit"
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white"
             >
               {loading
                 ? "Saving..."

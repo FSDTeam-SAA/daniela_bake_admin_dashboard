@@ -128,7 +128,7 @@ export function DashboardHeader({ user }: { user: any }) {
             <Button
               onClick={handleChangePassword}
               disabled={changePasswordMutation.isPending}
-              className="w-full bg-blue-600 hover:bg-blue-700"
+              className="w-full gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white"
             >
               {changePasswordMutation.isPending
                 ? "Changing..."

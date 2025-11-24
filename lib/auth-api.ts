@@ -1,3 +1,4 @@
+// lib/auth-api.ts
 import apiClient from "./api"
 import type { AuthResponse } from "./types"
 
@@ -8,7 +9,7 @@ export const authAPI = {
   },
 
   forgetPassword: async (email: string) => {
-    const response = await apiClient.post("/auth/forget-password", { email })
+    const response = await apiClient.post("/auth/forgot-password", { email })
     return response.data
   },
 

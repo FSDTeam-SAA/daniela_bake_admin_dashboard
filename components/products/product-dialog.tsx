@@ -215,7 +215,7 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
                 <Button
                   onClick={handleSubmit}
                   disabled={loading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white"
                 >
                   {loading ? "Saving..." : "Save Product"}
                 </Button>
@@ -333,7 +333,7 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
                       Drag and drop image here, or click add image
                     </p>
                     {!isViewMode && (
-                      <Button type="button" size="sm" className="bg-blue-500 hover:bg-blue-600" asChild>
+                      <Button type="button" size="sm" className="gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white" asChild>
                         <label htmlFor="product-image" className="cursor-pointer">
                           Add Image
                           <input
@@ -385,7 +385,7 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
             ))}
 
             {!isViewMode && (
-              <Button type="button" onClick={addIngredient} className="bg-blue-500 hover:bg-blue-600">
+              <Button type="button" onClick={addIngredient} className="gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white">
                 <Plus className="w-4 h-4 mr-2" />
                 Add More Ingredient
               </Button>
