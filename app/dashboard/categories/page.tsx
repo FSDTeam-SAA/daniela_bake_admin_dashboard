@@ -94,10 +94,6 @@ export default function CategoriesPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button className="gap-2 bg-white text-gray-700 border border-gray-200 hover:bg-gray-50">
-            <Filter className="w-4 h-4" />
-            Filters
-          </Button>
         </div>
 
         <div className="overflow-x-auto">
