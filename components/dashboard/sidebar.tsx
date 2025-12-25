@@ -15,6 +15,7 @@ import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 import {
   AlertDialog,
@@ -42,7 +43,17 @@ const menuItems = [
   { icon: MessageSquare, label: "Messages", href: "/dashboard/messages" },
 ];
 
-export function DashboardSidebar({ user }: { user: any }) {
+interface DashboardSidebarProps {
+  user: any;
+  onNavigate?: () => void;
+  className?: string;
+}
+
+export function DashboardSidebar({
+  user,
+  onNavigate,
+  className = "",
+}: DashboardSidebarProps) {
   const pathname = usePathname();
   const [logoutOpen, setLogoutOpen] = useState(false);
 
@@ -53,7 +64,12 @@ export function DashboardSidebar({ user }: { user: any }) {
   };
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen">
+    <aside
+      className={cn(
+        "w-64 bg-white border-r border-gray-200 flex flex-col h-full",
+        className
+      )}
+    >
       <div className="p-6 border-b border-gray-200">
         <Image
           src="/logo.png"
@@ -78,6 +94,7 @@ export function DashboardSidebar({ user }: { user: any }) {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${
                 isActive
                   ? "bg-[#5B9FED] text-white font-medium"

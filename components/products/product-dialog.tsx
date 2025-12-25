@@ -39,6 +39,16 @@ interface Ingredient {
   preview?: string;
 }
 
+const dayOptions = [
+  { value: "sun", label: "Sunday" },
+  { value: "mon", label: "Monday" },
+  { value: "tue", label: "Tuesday" },
+  { value: "wed", label: "Wednesday" },
+  { value: "thu", label: "Thursday" },
+  { value: "fri", label: "Friday" },
+  { value: "sat", label: "Saturday" },
+];
+
 export function ProductDialog({
   open,
   onOpenChange,
@@ -59,6 +69,9 @@ export function ProductDialog({
   const [ingredients, setIngredients] = useState<Ingredient[]>([
     { name: "", image: undefined, preview: "" },
   ]);
+  const [availableDays, setAvailableDays] = useState<string[]>(
+    dayOptions.map((d) => d.value)
+  );
 
   const isViewMode = mode === "view";
   const title =
@@ -98,6 +111,12 @@ export function ProductDialog({
       } else {
         setIngredients([{ name: "", image: undefined, preview: "" }]);
       }
+
+      const productDays =
+        product.availableDays && product.availableDays.length > 0
+          ? product.availableDays.map((d) => d.toLowerCase())
+          : dayOptions.map((d) => d.value);
+      setAvailableDays(productDays);
     } else {
       resetForm();
     }
@@ -131,6 +150,7 @@ export function ProductDialog({
     setProductImage(null);
     setProductImagePreview("");
     setIngredients([{ name: "", image: undefined, preview: "" }]);
+    setAvailableDays(dayOptions.map((d) => d.value));
   };
 
   const handleProductImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,12 +199,37 @@ export function ProductDialog({
     setIngredients(newIngredients);
   };
 
+  const toggleDay = (day: string) => {
+    if (isViewMode) return;
+    setAvailableDays((prev) =>
+      prev.includes(day)
+        ? prev.filter((d) => d !== day)
+        : [...prev, day]
+    );
+  };
+
+  const selectAllDays = () => {
+    if (isViewMode) return;
+    setAvailableDays(dayOptions.map((d) => d.value));
+  };
+
+  const clearAllDays = () => {
+    if (isViewMode) return;
+    setAvailableDays([]);
+  };
+
+  const allDaysSelected = availableDays.length === dayOptions.length;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isViewMode) return;
 
     if (!formData.name || !formData.category || !formData.price) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+    if (availableDays.length === 0) {
+      toast.error("Select at least one available day");
       return;
     }
 
@@ -211,6 +256,7 @@ export function ProductDialog({
         }));
 
       data.append("ingredients", JSON.stringify(ingredientsPayload));
+      data.append("availableDays", JSON.stringify(availableDays));
 
       if (mode === "add") {
         await productsAPI.createProduct(data);
@@ -332,6 +378,58 @@ export function ProductDialog({
                 }
                 disabled={isViewMode}
               />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Available days</Label>
+                {!isViewMode && (
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={selectAllDays}
+                      disabled={allDaysSelected}
+                    >
+                      Select all
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={clearAllDays}
+                      disabled={availableDays.length === 0}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {dayOptions.map((day) => {
+                  const active = availableDays.includes(day.value);
+                  return (
+                    <Button
+                      key={day.value}
+                      type="button"
+                      variant={active ? "default" : "outline"}
+                      onClick={() => toggleDay(day.value)}
+                      className={
+                        active
+                          ? "bg-[#5B9FED] hover:bg-[#4A8FDD] text-white"
+                          : "border-gray-200 text-gray-700"
+                      }
+                      disabled={isViewMode}
+                    >
+                      {day.label}
+                    </Button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-gray-500">
+                These days control when the item appears in the mobile app.
+              </p>
             </div>
           </div>
 

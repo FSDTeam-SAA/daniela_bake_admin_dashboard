@@ -9,6 +9,7 @@ export type ProductQueryParams = {
   search?: string
   minPrice?: number
   maxPrice?: number
+  day?: string
 }
 
 export const productsAPI = {

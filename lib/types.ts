@@ -36,6 +36,7 @@ export interface Product {
     name: string
     image?: string
   }>
+  availableDays?: string[]
   rating?: number
   reviewsCount?: number
   createdAt: string
