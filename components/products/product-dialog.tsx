@@ -1,24 +1,14 @@
+// components/ProductDialog.tsx
 "use client"
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Upload, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { productsAPI } from "@/lib/products-api"
@@ -49,31 +39,27 @@ const dayOptions = [
   { value: "sat", label: "Saturday" },
 ] as const
 
-export function ProductDialog({
-  open,
-  onOpenChange,
-  product,
-  mode,
-  onSuccess,
-}: ProductDialogProps) {
+export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: ProductDialogProps) {
   const [loading, setLoading] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [formData, setFormData] = useState({
     name: "",
-    category: "", // _id
+    category: "",
     description: "",
     price: "",
   })
+
   const [productImage, setProductImage] = useState<File | null>(null)
   const [productImagePreview, setProductImagePreview] = useState<string>("")
+
   const [ingredients, setIngredients] = useState<Ingredient[]>([
     { name: "", image: undefined, preview: "" },
   ])
+
   const [availableDays, setAvailableDays] = useState<string[]>([])
 
   const isViewMode = mode === "view"
-  const title =
-    mode === "add" ? "Add Product" : mode === "edit" ? "Edit Product" : "Product Details"
+  const title = mode === "add" ? "Add Product" : mode === "edit" ? "Edit Product" : "Product Details"
 
   useEffect(() => {
     if (!open) return
@@ -83,10 +69,7 @@ export function ProductDialog({
     if (product && (mode === "edit" || mode === "view")) {
       setFormData({
         name: product.name,
-        category:
-          typeof product.category === "string"
-            ? product.category
-            : product.category?._id ?? "",
+        category: typeof product.category === "string" ? product.category : product.category?._id ?? "",
         description: product.description || "",
         price: String(product.price ?? ""),
       })
@@ -98,8 +81,8 @@ export function ProductDialog({
         setIngredients(
           product.ingredients.map((ing) => ({
             name: ing.name,
-            image: ing.image,
-            preview: ing.image,
+            image: ing.image,      // existing URL
+            preview: ing.image,    // show existing URL as preview
           }))
         )
       } else {
@@ -124,12 +107,12 @@ export function ProductDialog({
       const cats: Category[] = Array.isArray(res)
         ? res
         : Array.isArray((res as any).data)
-        ? (res as any).data
-        : Array.isArray((res as any).data?.items)
-        ? (res as any).data.items
-        : Array.isArray((res as any).items)
-        ? (res as any).items
-        : []
+          ? (res as any).data
+          : Array.isArray((res as any).data?.items)
+            ? (res as any).data.items
+            : Array.isArray((res as any).items)
+              ? (res as any).items
+              : []
 
       setCategories(cats)
     } catch (error) {
@@ -149,12 +132,24 @@ export function ProductDialog({
 
   const handleProductImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      setProductImage(file)
-      const reader = new FileReader()
-      reader.onloadend = () => setProductImagePreview(reader.result as string)
-      reader.readAsDataURL(file)
+    if (!file) return
+    setProductImage(file)
+    const reader = new FileReader()
+    reader.onloadend = () => setProductImagePreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  const handleIngredientImageChange = (index: number, file?: File) => {
+    if (!file) return
+    const next = [...ingredients]
+    next[index].image = file
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      next[index].preview = reader.result as string
+      setIngredients(next)
     }
+    reader.readAsDataURL(file)
   }
 
   const addIngredient = () => {
@@ -174,11 +169,7 @@ export function ProductDialog({
   }
 
   const toggleDay = (dayValue: string) => {
-    setAvailableDays((prev) =>
-      prev.includes(dayValue)
-        ? prev.filter((d) => d !== dayValue)
-        : [...prev, dayValue]
-    )
+    setAvailableDays((prev) => (prev.includes(dayValue) ? prev.filter((d) => d !== dayValue) : [...prev, dayValue]))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -202,17 +193,28 @@ export function ProductDialog({
       data.append("description", formData.description)
       data.append("price", formData.price)
 
+      // product image (required on create, optional on update)
       if (productImage) data.append("image", productImage)
 
-      const ingredientsPayload = ingredients
+      // Ingredients JSON keeps existing image URLs (strings)
+      const cleanedIngredients = ingredients
         .filter((ing) => ing.name.trim() !== "")
         .map((ing) => ({
           name: ing.name,
           ...(typeof ing.image === "string" ? { image: ing.image } : {}),
         }))
 
-      data.append("ingredients", JSON.stringify(ingredientsPayload))
+      data.append("ingredients", JSON.stringify(cleanedIngredients))
       data.append("availableDays", JSON.stringify(availableDays))
+
+      // append ingredient files (only File ones), order matches cleanedIngredients
+      ingredients
+        .filter((ing) => ing.name.trim() !== "")
+        .forEach((ing) => {
+          if (ing.image instanceof File) {
+            data.append("ingredientImage", ing.image) // repeated key => array
+          }
+        })
 
       if (mode === "add") {
         await productsAPI.createProduct(data)
@@ -242,7 +244,6 @@ export function ProductDialog({
 
             <div className="flex gap-2">
               {!isViewMode && (
-                // ✅ Proper submit button (no missing event)
                 <Button
                   type="submit"
                   form="product-form"
@@ -266,13 +267,11 @@ export function ProductDialog({
           </div>
 
           <p className="text-sm text-gray-500">
-            Overview <span className="mx-2">›</span> Product{" "}
-            <span className="mx-2">›</span>{" "}
+            Overview <span className="mx-2">›</span> Product <span className="mx-2">›</span>{" "}
             {mode === "add" ? "Add Product" : product?.name}
           </p>
         </DialogHeader>
 
-        {/* ✅ Give form an id so header button can submit it */}
         <form id="product-form" onSubmit={handleSubmit} className="space-y-6 mt-4">
           {/* General Information */}
           <div className="space-y-4">
@@ -293,9 +292,7 @@ export function ProductDialog({
               <Label htmlFor="category">Product Category</Label>
               <Select
                 value={formData.category}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, category: value })
-                }
+                onValueChange={(value) => setFormData({ ...formData, category: value })}
                 disabled={isViewMode}
               >
                 <SelectTrigger>
@@ -303,9 +300,7 @@ export function ProductDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {categories.length === 0 ? (
-                    <div className="px-3 py-2 text-sm text-gray-500">
-                      No categories found
-                    </div>
+                    <div className="px-3 py-2 text-sm text-gray-500">No categories found</div>
                   ) : (
                     categories.map((cat) => (
                       <SelectItem key={cat._id} value={cat._id}>
@@ -323,9 +318,7 @@ export function ProductDialog({
                 id="description"
                 placeholder="Type description"
                 value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 disabled={isViewMode}
                 rows={3}
               />
@@ -339,9 +332,7 @@ export function ProductDialog({
                 step="0.01"
                 placeholder="Type price"
                 value={formData.price}
-                onChange={(e) =>
-                  setFormData({ ...formData, price: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                 disabled={isViewMode}
               />
             </div>
@@ -370,9 +361,7 @@ export function ProductDialog({
                 ))}
               </div>
               {availableDays.length === 0 && !isViewMode && (
-                <p className="text-sm text-red-600 mt-1">
-                  Please select at least one day
-                </p>
+                <p className="text-sm text-red-600 mt-1">Please select at least one day</p>
               )}
             </div>
           </div>
@@ -409,16 +398,9 @@ export function ProductDialog({
                     <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                       <Upload className="w-6 h-6 text-blue-600" />
                     </div>
-                    <p className="text-sm text-gray-600">
-                      Drag and drop image here, or click add image
-                    </p>
+                    <p className="text-sm text-gray-600">Drag and drop image here, or click add image</p>
                     {!isViewMode && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white"
-                        asChild
-                      >
+                      <Button type="button" size="sm" className="gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white" asChild>
                         <label htmlFor="product-image" className="cursor-pointer">
                           Add Image
                           <input
@@ -440,11 +422,9 @@ export function ProductDialog({
           {/* Ingredients */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Add Ingredient</h3>
+
             {ingredients.map((ingredient, index) => (
-              <div
-                key={index}
-                className="space-y-4 p-4 border border-gray-200 rounded-lg"
-              >
+              <div key={index} className="space-y-4 p-4 border border-gray-200 rounded-lg">
                 <div className="flex items-center justify-between">
                   <Label>Ingredient {index + 1}</Label>
                   {!isViewMode && ingredients.length > 1 && (
@@ -469,15 +449,55 @@ export function ProductDialog({
                     disabled={isViewMode}
                   />
                 </div>
+
+                {/* Ingredient image */}
+                <div className="space-y-2">
+                  <Label>Ingredient Image</Label>
+
+                  {ingredient.preview ? (
+                    <div className="space-y-2">
+                      <img
+                        src={ingredient.preview}
+                        alt="Ingredient preview"
+                        className="max-h-32 rounded-lg object-cover"
+                      />
+                      {!isViewMode && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const next = [...ingredients]
+                            next[index].image = undefined
+                            next[index].preview = ""
+                            setIngredients(next)
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    !isViewMode && (
+                      <Button type="button" variant="outline" size="sm" asChild>
+                        <label className="cursor-pointer">
+                          Add Ingredient Image
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleIngredientImageChange(index, e.target.files?.[0])}
+                          />
+                        </label>
+                      </Button>
+                    )
+                  )}
+                </div>
               </div>
             ))}
 
             {!isViewMode && (
-              <Button
-                type="button"
-                onClick={addIngredient}
-                className="gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white"
-              >
+              <Button type="button" onClick={addIngredient} className="gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white">
                 <Plus className="w-4 h-4" />
                 Add More Ingredient
               </Button>
