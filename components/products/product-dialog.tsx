@@ -1,42 +1,42 @@
-"use client";
+"use client"
 
-import type React from "react";
-import { useState, useEffect } from "react";
+import type React from "react"
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Plus, Upload, Trash2 } from "lucide-react";
-import { toast } from "sonner";
-import { productsAPI } from "@/lib/products-api";
-import { categoriesAPI } from "@/lib/categories-api";
-import type { Product, Category } from "@/lib/types";
+} from "@/components/ui/select"
+import { Plus, Upload, Trash2 } from "lucide-react"
+import { toast } from "sonner"
+import { productsAPI } from "@/lib/products-api"
+import { categoriesAPI } from "@/lib/categories-api"
+import type { Product, Category } from "@/lib/types"
 
 interface ProductDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  product?: Product | null;
-  mode: "add" | "edit" | "view";
-  onSuccess?: () => void;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  product?: Product | null
+  mode: "add" | "edit" | "view"
+  onSuccess?: () => void
 }
 
 interface Ingredient {
-  name: string;
-  image?: File | string;
-  preview?: string;
+  name: string
+  image?: File | string
+  preview?: string
 }
 
 const dayOptions = [
@@ -47,7 +47,7 @@ const dayOptions = [
   { value: "thu", label: "Thursday" },
   { value: "fri", label: "Friday" },
   { value: "sat", label: "Saturday" },
-];
+] as const
 
 export function ProductDialog({
   open,
@@ -56,49 +56,43 @@ export function ProductDialog({
   mode,
   onSuccess,
 }: ProductDialogProps) {
-  const [loading, setLoading] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(false)
+  const [categories, setCategories] = useState<Category[]>([])
   const [formData, setFormData] = useState({
     name: "",
-    category: "", // will hold category _id
+    category: "", // _id
     description: "",
     price: "",
-  });
-  const [productImage, setProductImage] = useState<File | null>(null);
-  const [productImagePreview, setProductImagePreview] = useState<string>("");
+  })
+  const [productImage, setProductImage] = useState<File | null>(null)
+  const [productImagePreview, setProductImagePreview] = useState<string>("")
   const [ingredients, setIngredients] = useState<Ingredient[]>([
     { name: "", image: undefined, preview: "" },
-  ]);
-  const [availableDays, setAvailableDays] = useState<string[]>(
-    dayOptions.map((d) => d.value)
-  );
+  ])
+  const [availableDays, setAvailableDays] = useState<string[]>([])
 
-  const isViewMode = mode === "view";
+  const isViewMode = mode === "view"
   const title =
-    mode === "add"
-      ? "Add Product"
-      : mode === "edit"
-      ? "Edit Product"
-      : "Product Details";
+    mode === "add" ? "Add Product" : mode === "edit" ? "Edit Product" : "Product Details"
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) return
 
-    // load categories every time dialog opens
-    loadCategories();
+    loadCategories()
 
     if (product && (mode === "edit" || mode === "view")) {
       setFormData({
         name: product.name,
-        // product.category might be a string or an object
         category:
           typeof product.category === "string"
             ? product.category
             : product.category?._id ?? "",
         description: product.description || "",
-        price: product.price.toString(),
-      });
-      setProductImagePreview(product.image || "");
+        price: String(product.price ?? ""),
+      })
+
+      setProductImage(null)
+      setProductImagePreview(product.image || "")
 
       if (product.ingredients && product.ingredients.length > 0) {
         setIngredients(
@@ -107,26 +101,26 @@ export function ProductDialog({
             image: ing.image,
             preview: ing.image,
           }))
-        );
+        )
       } else {
-        setIngredients([{ name: "", image: undefined, preview: "" }]);
+        setIngredients([{ name: "", image: undefined, preview: "" }])
       }
 
       const productDays =
         product.availableDays && product.availableDays.length > 0
-          ? product.availableDays.map((d) => d.toLowerCase())
-          : dayOptions.map((d) => d.value);
-      setAvailableDays(productDays);
+          ? product.availableDays.map((d: string) => d.toLowerCase())
+          : []
+      setAvailableDays(productDays)
     } else {
-      resetForm();
+      resetForm()
     }
-  }, [open, product, mode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, product, mode])
 
   const loadCategories = async () => {
     try {
-      const res = await categoriesAPI.getCategories();
+      const res = await categoriesAPI.getCategories()
 
-      // Try to safely derive an array from whatever the API returns
       const cats: Category[] = Array.isArray(res)
         ? res
         : Array.isArray((res as any).data)
@@ -135,169 +129,142 @@ export function ProductDialog({
         ? (res as any).data.items
         : Array.isArray((res as any).items)
         ? (res as any).items
-        : [];
+        : []
 
-      setCategories(cats);
+      setCategories(cats)
     } catch (error) {
-      console.error("Failed to load categories:", error);
-      toast.error("Failed to load categories");
-      setCategories([]); // keep it an array to avoid .map crash
+      console.error("Failed to load categories:", error)
+      toast.error("Failed to load categories")
+      setCategories([])
     }
-  };
+  }
 
   const resetForm = () => {
-    setFormData({ name: "", category: "", description: "", price: "" });
-    setProductImage(null);
-    setProductImagePreview("");
-    setIngredients([{ name: "", image: undefined, preview: "" }]);
-    setAvailableDays(dayOptions.map((d) => d.value));
-  };
+    setFormData({ name: "", category: "", description: "", price: "" })
+    setProductImage(null)
+    setProductImagePreview("")
+    setIngredients([{ name: "", image: undefined, preview: "" }])
+    setAvailableDays([])
+  }
 
   const handleProductImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = e.target.files?.[0]
     if (file) {
-      setProductImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setProductImagePreview(reader.result as string);
-      reader.readAsDataURL(file);
+      setProductImage(file)
+      const reader = new FileReader()
+      reader.onloadend = () => setProductImagePreview(reader.result as string)
+      reader.readAsDataURL(file)
     }
-  };
-
-  const handleIngredientImageChange = (
-    index: number,
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const newIngredients = [...ingredients];
-        newIngredients[index].image = file;
-        newIngredients[index].preview = reader.result as string;
-        setIngredients(newIngredients);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  }
 
   const addIngredient = () => {
-    setIngredients([
-      ...ingredients,
-      { name: "", image: undefined, preview: "" },
-    ]);
-  };
+    setIngredients([...ingredients, { name: "", image: undefined, preview: "" }])
+  }
 
   const removeIngredient = (index: number) => {
     if (ingredients.length > 1) {
-      setIngredients(ingredients.filter((_, i) => i !== index));
+      setIngredients(ingredients.filter((_, i) => i !== index))
     }
-  };
+  }
 
   const updateIngredientName = (index: number, name: string) => {
-    const newIngredients = [...ingredients];
-    newIngredients[index].name = name;
-    setIngredients(newIngredients);
-  };
+    const next = [...ingredients]
+    next[index].name = name
+    setIngredients(next)
+  }
 
-  const toggleDay = (day: string) => {
-    if (isViewMode) return;
+  const toggleDay = (dayValue: string) => {
     setAvailableDays((prev) =>
-      prev.includes(day)
-        ? prev.filter((d) => d !== day)
-        : [...prev, day]
-    );
-  };
-
-  const selectAllDays = () => {
-    if (isViewMode) return;
-    setAvailableDays(dayOptions.map((d) => d.value));
-  };
-
-  const clearAllDays = () => {
-    if (isViewMode) return;
-    setAvailableDays([]);
-  };
-
-  const allDaysSelected = availableDays.length === dayOptions.length;
+      prev.includes(dayValue)
+        ? prev.filter((d) => d !== dayValue)
+        : [...prev, dayValue]
+    )
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isViewMode) return;
+    e.preventDefault()
+    if (isViewMode) return
 
     if (!formData.name || !formData.category || !formData.price) {
-      toast.error("Please fill in all required fields");
-      return;
+      toast.error("Please fill in all required fields")
+      return
     }
     if (availableDays.length === 0) {
-      toast.error("Select at least one available day");
-      return;
+      toast.error("Select at least one available day")
+      return
     }
 
-    setLoading(true);
+    setLoading(true)
     try {
-      const data = new FormData();
-      data.append("name", formData.name);
-      data.append("category", formData.category); // categoryId
-      data.append("description", formData.description);
-      data.append("price", formData.price);
+      const data = new FormData()
+      data.append("name", formData.name)
+      data.append("category", formData.category)
+      data.append("description", formData.description)
+      data.append("price", formData.price)
 
-      // ✅ only one file field: "image"
-      if (productImage) {
-        data.append("image", productImage);
-      }
+      if (productImage) data.append("image", productImage)
 
-      // ✅ ingredients as JSON string, like in Postman
       const ingredientsPayload = ingredients
         .filter((ing) => ing.name.trim() !== "")
         .map((ing) => ({
           name: ing.name,
-          // if editing and existing image is a URL/string, you can keep it:
           ...(typeof ing.image === "string" ? { image: ing.image } : {}),
-        }));
+        }))
 
-      data.append("ingredients", JSON.stringify(ingredientsPayload));
-      data.append("availableDays", JSON.stringify(availableDays));
+      data.append("ingredients", JSON.stringify(ingredientsPayload))
+      data.append("availableDays", JSON.stringify(availableDays))
 
       if (mode === "add") {
-        await productsAPI.createProduct(data);
-        toast.success("Product added successfully");
+        await productsAPI.createProduct(data)
+        toast.success("Product added successfully")
       } else {
-        await productsAPI.updateProduct(product!._id, data);
-        toast.success("Product updated successfully");
+        await productsAPI.updateProduct(product!._id, data)
+        toast.success("Product updated successfully")
       }
 
-      onSuccess?.();
-      onOpenChange(false);
-      resetForm();
+      onSuccess?.()
+      onOpenChange(false)
+      resetForm()
     } catch (error: any) {
-      console.error(error);
-      toast.error(error?.response?.data?.message || "Failed to save product");
+      console.error(error)
+      toast.error(error?.response?.data?.message || "Failed to save product")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className=" max-h-[90vh] overflow-y-auto sm:max-w-4xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
           <div className="flex items-center justify-between mr-4">
             <DialogTitle className="text-2xl font-bold">{title}</DialogTitle>
+
             <div className="flex gap-2">
               {!isViewMode && (
+                // ✅ Proper submit button (no missing event)
                 <Button
-                  onClick={handleSubmit}
+                  type="submit"
+                  form="product-form"
                   disabled={loading}
                   className="gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white"
                 >
                   {loading ? "Saving..." : "Save Product"}
                 </Button>
               )}
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
+
+              <Button
+                variant="outline"
+                onClick={() => {
+                  onOpenChange(false)
+                  if (!isViewMode) resetForm()
+                }}
+              >
                 {isViewMode ? "Close" : "Cancel"}
               </Button>
             </div>
           </div>
+
           <p className="text-sm text-gray-500">
             Overview <span className="mx-2">›</span> Product{" "}
             <span className="mx-2">›</span>{" "}
@@ -305,7 +272,8 @@ export function ProductDialog({
           </p>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+        {/* ✅ Give form an id so header button can submit it */}
+        <form id="product-form" onSubmit={handleSubmit} className="space-y-6 mt-4">
           {/* General Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">General Information</h3>
@@ -316,9 +284,7 @@ export function ProductDialog({
                 id="name"
                 placeholder="Type product name here..."
                 value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 disabled={isViewMode}
               />
             </div>
@@ -380,56 +346,34 @@ export function ProductDialog({
               />
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Available days</Label>
-                {!isViewMode && (
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={selectAllDays}
-                      disabled={allDaysSelected}
-                    >
-                      Select all
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={clearAllDays}
-                      disabled={availableDays.length === 0}
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {dayOptions.map((day) => {
-                  const active = availableDays.includes(day.value);
-                  return (
-                    <Button
-                      key={day.value}
-                      type="button"
-                      variant={active ? "default" : "outline"}
-                      onClick={() => toggleDay(day.value)}
-                      className={
-                        active
-                          ? "bg-[#5B9FED] hover:bg-[#4A8FDD] text-white"
-                          : "border-gray-200 text-gray-700"
-                      }
+            {/* Available Days */}
+            <div className="space-y-3">
+              <Label>Available Days</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {dayOptions.map((day) => (
+                  <div key={day.value} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={`day-${day.value}`}
+                      checked={availableDays.includes(day.value)}
+                      onChange={() => toggleDay(day.value)}
                       disabled={isViewMode}
+                      className="h-4 w-4 rounded border-gray-300 text-[#5B9FED] focus:ring-[#5B9FED] cursor-pointer"
+                    />
+                    <label
+                      htmlFor={`day-${day.value}`}
+                      className="text-sm font-medium leading-none cursor-pointer select-none"
                     >
                       {day.label}
-                    </Button>
-                  );
-                })}
+                    </label>
+                  </div>
+                ))}
               </div>
-              <p className="text-xs text-gray-500">
-                These days control when the item appears in the mobile app.
-              </p>
+              {availableDays.length === 0 && !isViewMode && (
+                <p className="text-sm text-red-600 mt-1">
+                  Please select at least one day
+                </p>
+              )}
             </div>
           </div>
 
@@ -452,8 +396,8 @@ export function ProductDialog({
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          setProductImage(null);
-                          setProductImagePreview("");
+                          setProductImage(null)
+                          setProductImagePreview("")
                         }}
                       >
                         Remove
@@ -475,10 +419,7 @@ export function ProductDialog({
                         className="gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white"
                         asChild
                       >
-                        <label
-                          htmlFor="product-image"
-                          className="cursor-pointer"
-                        >
+                        <label htmlFor="product-image" className="cursor-pointer">
                           Add Image
                           <input
                             id="product-image"
@@ -524,9 +465,7 @@ export function ProductDialog({
                   <Input
                     placeholder="Onion"
                     value={ingredient.name}
-                    onChange={(e) =>
-                      updateIngredientName(index, e.target.value)
-                    }
+                    onChange={(e) => updateIngredientName(index, e.target.value)}
                     disabled={isViewMode}
                   />
                 </div>
@@ -539,7 +478,7 @@ export function ProductDialog({
                 onClick={addIngredient}
                 className="gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white"
               >
-                <Plus className="w-4 h-4 mr-2" />
+                <Plus className="w-4 h-4" />
                 Add More Ingredient
               </Button>
             )}
@@ -547,5 +486,5 @@ export function ProductDialog({
         </form>
       </DialogContent>
     </Dialog>
-  );
+  )
 }
