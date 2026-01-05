@@ -2,23 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
-import {
-  Plus,
-  Edit2,
-  Trash2,
-  Eye,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react"
+import { Plus, Edit2, Trash2, Eye, ChevronLeft, ChevronRight } from "lucide-react"
 
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 
 import { productsAPI, type ProductQueryParams } from "@/lib/products-api"
+import { categoriesAPI } from "@/lib/categories-api"
 import { ProductDialog } from "@/components/products/product-dialog"
 import { DeleteProductDialog } from "@/components/products/delete-product-dialog"
-import type { Product } from "@/lib/types"
+import type { Product, Category } from "@/lib/types"
+import Image from "next/image"
 
 const dayOptions = [
   { value: "all", label: "All days" },
@@ -39,6 +36,8 @@ export default function ProductsPage() {
   const limit = 10
   const [page, setPage] = useState(1)
   const [dayFilter, setDayFilter] = useState<string>("all")
+  const [categoryFilter, setCategoryFilter] = useState<string>("all")
+  const [categorySearch, setCategorySearch] = useState<string>("")
 
   const [productDialog, setProductDialog] = useState<{
     open: boolean
@@ -52,14 +51,47 @@ export default function ProductsPage() {
   }>({ open: false, product: null })
 
   const params: ProductQueryParams = useMemo(() => {
-  return { page, limit, day: dayFilter }
-}, [page, limit, dayFilter])
+    const next: ProductQueryParams = { page, limit, day: dayFilter }
+    if (categoryFilter !== "all") {
+      next.category = categoryFilter
+    }
+    return next
+  }, [page, limit, dayFilter, categoryFilter])
 
+  const {
+    data: categoriesData,
+    isLoading: isLoadingCategories,
+  } = useQuery({
+    queryKey: ["categories"],
+    queryFn: categoriesAPI.getCategories,
+  })
 
-  // Reset page when day filter changes
+  const normalizedCategories: Category[] = useMemo(() => {
+    if (!categoriesData) return []
+    if (Array.isArray(categoriesData)) return categoriesData
+    if (Array.isArray((categoriesData as any)?.data)) return (categoriesData as any).data
+    if (Array.isArray((categoriesData as any)?.data?.items)) return (categoriesData as any).data.items
+    if (Array.isArray((categoriesData as any)?.items)) return (categoriesData as any).items
+    return []
+  }, [categoriesData])
+
+  const filteredCategories = useMemo(() => {
+    if (!categorySearch.trim()) return normalizedCategories
+    const keyword = categorySearch.toLowerCase()
+    return normalizedCategories.filter((cat) => cat.name.toLowerCase().includes(keyword))
+  }, [normalizedCategories, categorySearch])
+
+  const categoryOptions = useMemo(
+    () => [
+      { value: "all", label: "All categories" },
+      ...filteredCategories.map((cat) => ({ value: cat._id, label: cat.name })),
+    ],
+    [filteredCategories],
+  )
+
   useEffect(() => {
     setPage(1)
-  }, [dayFilter])
+  }, [dayFilter, categoryFilter])
 
   const { data: productsData, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["products", params],
@@ -73,8 +105,9 @@ export default function ProductsPage() {
 
   const selectedDayLabel =
     dayOptions.find((d) => d.value === dayFilter)?.label ?? "All days"
+  const selectedCategoryLabel =
+    categoryOptions.find((c) => c.value === categoryFilter)?.label ?? "All categories"
 
-  // Better pagination: show up to 5 pages centered around current
   const visibleCount = 5
   const start = Math.max(1, Math.min(page - 2, pages - visibleCount + 1))
   const visiblePages = Array.from(
@@ -84,8 +117,8 @@ export default function ProductsPage() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
-      {/* Fixed Day Filter Sidebar */}
-      <Card className="p-5 h-fit">
+      {/* Fixed Filters Sidebar */}
+      <Card className="p-5 h-fit space-y-6">
         <div className="space-y-3">
           <div>
             <p className="text-sm text-gray-500">Weekly view</p>
@@ -138,7 +171,8 @@ export default function ProductsPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Product Lists</h1>
             <p className="text-sm text-gray-600">
-              Showing: <span className="font-semibold">{selectedDayLabel}</span>
+              Showing: <span className="font-semibold">{selectedDayLabel}</span> /{" "}
+              <span className="font-semibold">{selectedCategoryLabel}</span>
             </p>
           </div>
 
@@ -152,6 +186,50 @@ export default function ProductsPage() {
             Add Product
           </Button>
         </div>
+
+        {/* Category filters at top */}
+        <Card className="p-4">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-sm text-gray-500">Categories</p>
+              <h3 className="text-lg font-semibold">Filter by category</h3>
+            </div>
+            <Badge variant="secondary" className="bg-[#DCEBFB] text-[#2D6CB8]">
+              {normalizedCategories.length || 0} total
+            </Badge>
+          </div>
+
+          
+
+          <div className="flex flex-wrap gap-2">
+            {isLoadingCategories ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-9 w-24 rounded-full" />
+              ))
+            ) : categoryOptions.length === 0 ? (
+              <p className="text-xs text-gray-500">No categories found.</p>
+            ) : (
+              categoryOptions.map((opt) => {
+                const active = opt.value === categoryFilter
+                return (
+                  <Button
+                    key={opt.value}
+                    variant={active ? "default" : "outline"}
+                    size="sm"
+                    className={
+                      active
+                        ? "bg-[#7B3F00] hover:bg-[#6A3500] text-white"
+                        : "border-gray-200 text-gray-700"
+                    }
+                    onClick={() => setCategoryFilter(opt.value)}
+                  >
+                    {opt.label}
+                  </Button>
+                )
+              })
+            )}
+          </div>
+        </Card>
 
         <Card className="p-6">
           {/* Table */}
@@ -212,10 +290,12 @@ export default function ProductsPage() {
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <img
+                          <Image
                             src={product.image || "/placeholder.svg"}
                             alt={product.name}
-                            className="w-8 h-8 rounded object-cover"
+                            width={500}
+                            height={500}
+                            className="w-8 h-8"
                           />
                           <span className="font-medium">{product.name}</span>
                         </div>

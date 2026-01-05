@@ -100,6 +100,7 @@ export default function CategoriesPage() {
           <table className="w-full text-sm">
             <thead className="bg-[#7B3F00] text-white">
               <tr>
+                <th className="px-4 py-3 text-left font-bold">Order</th>
                 <th className="px-4 py-3 text-left font-bold">Photo</th>
                 <th className="px-4 py-3 text-left font-bold">Category</th>
                 <th className="px-4 py-3 text-left font-bold">Added</th>
@@ -110,6 +111,9 @@ export default function CategoriesPage() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-gray-200">
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-10" />
+                    </td>
                     <td className="px-4 py-3">
                       <Skeleton className="w-12 h-12 rounded" />
                     </td>
@@ -129,16 +133,19 @@ export default function CategoriesPage() {
                 ))
               ) : filteredCategories.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                     No categories found
                   </td>
                 </tr>
               ) : (
-                filteredCategories.map((category) => (
+                filteredCategories.map((category, index) => (
                   <tr
                     key={category._id}
                     className="border-b border-gray-200 hover:bg-gray-50"
                   >
+                    <td className="px-4 py-3 font-medium">
+                      {category.order ?? index + 1}
+                    </td>
                     <td className="px-4 py-3">
                       {category.image ? (
                         <img

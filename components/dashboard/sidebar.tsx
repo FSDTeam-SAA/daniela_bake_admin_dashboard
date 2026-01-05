@@ -76,7 +76,7 @@ export function DashboardSidebar({
           alt="User Avatar"
           width={160}
           height={80}
-          className="rounded-full w-[160px] h-[80px]"
+          className="w-[160px] h-[80px]"
         />
       </div>
 
