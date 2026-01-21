@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
-import { ordersAPI } from "@/lib/orders-api"
+import { dashbordOverviewAPI } from "@/lib/dashbord-overview"
 import {
   BarChart,
   Bar,
@@ -19,50 +19,41 @@ import { Card } from "@/components/ui/card"
 import { ShoppingCart, Coffee, TrendingUp, Wallet } from "lucide-react"
 
 export function DashboardOverview() {
-  const { data: ordersData, isLoading } = useQuery({
-    queryKey: ["orders", 1],
-    queryFn: () => ordersAPI.getOrders(1, 100),
+  const { data, isLoading } = useQuery({
+    queryKey: ["dashboard", "overview"],
+    queryFn: () => dashbordOverviewAPI.getDashboardOverview(),
   })
 
-  const orders = ordersData?.data.orders || []
-  const totalRevenue = orders.reduce((sum: number, o: any) => sum + o.totalAmount, 0)
-  const deliveredCount = orders.filter((o: any) => o.status === "Delivered").length
+  const statsData = data?.stats
+  const weekly = data?.charts?.weeklyPerformance ?? []
+  const recentOrders = data?.recentOrders ?? []
 
   const stats = [
     {
       icon: ShoppingCart,
-      label: "Total Orders",
-      value: orders.length,
+      label: "Total Customers",
+      value: statsData?.totalCustomers ?? 0,
     },
     {
       icon: Coffee,
       label: "Total Delivered",
-      value: deliveredCount,
+      value: statsData?.totalDelivered ?? 0,
     },
     {
       icon: Wallet,
       label: "Total Revenue",
-      value: `$${totalRevenue}`,
+      value: `$${Number(statsData?.totalRevenue ?? 0).toFixed(2)}`,
     },
     {
       icon: TrendingUp,
       label: "Total Orders",
-      value: orders.length,
+      value: statsData?.totalOrders ?? 0,
     },
-  ]
-
-  const chartData = [
-    { name: "Sun", value: 400 },
-    { name: "Mon", value: 300 },
-    { name: "Tue", value: 200 },
-    { name: "Wed", value: 278 },
-    { name: "Thu", value: 189 },
-    { name: "Fri", value: 239 },
-    { name: "Sat", value: 349 },
   ]
 
   return (
     <div className="space-y-6">
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, index) => {
           const Icon = stat.icon
@@ -80,46 +71,49 @@ export function DashboardOverview() {
         })}
       </div>
 
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
-          <h3 className="text-lg font-bold mb-4">Chart Order</h3>
+          <h3 className="text-lg font-bold mb-4">Weekly Orders</h3>
           {isLoading ? (
             <Skeleton className="h-80" />
           ) : (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData}>
+              <BarChart data={weekly}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
-                <YAxis />
+                <YAxis allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="value" fill="#3b82f6" />
+                <Bar dataKey="orders" fill="#3b82f6" />
               </BarChart>
             </ResponsiveContainer>
           )}
         </Card>
 
         <Card className="p-6">
-          <h3 className="text-lg font-bold mb-4">Total Revenue</h3>
+          <h3 className="text-lg font-bold mb-4">Weekly Revenue</h3>
           {isLoading ? (
             <Skeleton className="h-80" />
           ) : (
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData}>
+              <LineChart data={weekly}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="value" stroke="#3b82f6" name="Revenue" />
-                <Line type="monotone" dataKey="value" stroke="#f59e0b" name="Orders" />
+                <Line type="monotone" dataKey="revenue" stroke="#3b82f6" name="Revenue" />
+                <Line type="monotone" dataKey="orders" stroke="#f59e0b" name="Orders" />
               </LineChart>
             </ResponsiveContainer>
           )}
         </Card>
       </div>
 
+      {/* Recent Orders */}
       <Card className="p-6">
         <h3 className="text-lg font-bold mb-4">Recent Orders</h3>
+
         {isLoading ? (
           <div className="space-y-2">
             {[...Array(5)].map((_, i) => (
@@ -138,26 +132,36 @@ export function DashboardOverview() {
                 </tr>
               </thead>
               <tbody>
-                {orders.slice(0, 10).map((order: any) => (
-                  <tr key={order._id} className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium">{order._id.slice(-6)}</td>
-                    <td className="px-4 py-3">{order.user.name}</td>
-                    <td className="px-4 py-3">${order.totalAmount}</td>
+                {recentOrders.map((o) => (
+                  <tr key={o.id} className="border-b border-gray-200 hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium">{o.orderId}</td>
+                    <td className="px-4 py-3">{o.customer ?? "Unknown"}</td>
+                    <td className="px-4 py-3">${Number(o.amount ?? 0).toFixed(2)}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          order.status === "Delivered"
+                          o.status === "Delivered"
                             ? "bg-green-100 text-green-800"
-                            : order.status === "Pending"
+                            : o.status === "Pending"
                               ? "bg-yellow-100 text-yellow-800"
-                              : "bg-gray-100 text-gray-800"
+                              : o.status === "Cancelled"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-gray-100 text-gray-800"
                         }`}
                       >
-                        {order.status}
+                        {o.status ?? "—"}
                       </span>
                     </td>
                   </tr>
                 ))}
+
+                {recentOrders.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                      No recent orders
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

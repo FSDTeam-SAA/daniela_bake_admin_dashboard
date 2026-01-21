@@ -15,10 +15,21 @@ export interface AuthResponse {
   }
 }
 
+export interface Category {
+  _id: string
+  name: string
+  image?: string
+  order?: number
+  createdAt?: string
+}
+
+/** ✅ Backend returns category as object (populate) OR string id */
+export type ProductCategory = string | Pick<Category, "_id" | "name" | "image">
+
 export interface Product {
   _id: string
   name: string
-  category: string | { _id: string; name: string; image?: string }
+  category: ProductCategory
   description: string
   price: number
   image?: string
@@ -27,7 +38,20 @@ export interface Product {
     name: string
     image?: string
   }>
+  availableDays?: string[]
+  rating?: number
+  reviewsCount?: number
   createdAt: string
+  updatedAt?: string
+}
+
+export type OrdersPaginatedResponse = ApiResponse<OrdersPaginatedData>
+/** ✅ Orders pagination shape (uses `orders`, not `items`) */
+export interface OrdersPaginatedData {
+  total: number
+  page: number
+  pages: number
+  orders: Order[]
 }
 
 export interface Order {
@@ -62,20 +86,19 @@ export interface Customer {
   joinedDate: string
 }
 
-export interface Category {
-  _id: string
-  name: string
-  image?: string
-  createdAt: string
-}
-
-export interface PaginatedResponse<T> {
+/** ✅ Exact API shape */
+export interface ApiResponse<T> {
   success: boolean
   message: string
-  data: {
-    total: number
-    page: number
-    pages: number
-    [key: string]: T[] | number
-  }
+  data: T
 }
+
+/** ✅ Exact pagination data shape */
+export interface PaginatedData<T> {
+  total: number
+  page: number
+  pages: number
+  items: T[]
+}
+
+export type PaginatedResponse<T> = ApiResponse<PaginatedData<T>>

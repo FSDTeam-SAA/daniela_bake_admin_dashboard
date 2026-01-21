@@ -34,6 +34,7 @@ export function CategoryDialog({
 }: CategoryDialogProps) {
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
+  const [order, setOrder] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [bgColor, setBgColor] = useState<string>("#ffffff"); // ✅ background color
@@ -42,6 +43,9 @@ export function CategoryDialog({
     if (open) {
       if (category && mode === "edit") {
         setName(category.name);
+        setOrder(
+          typeof category.order === "number" ? category.order.toString() : ""
+        );
         setImagePreview(category.image || "");
         setBgColor((category as any).bgColor || "#ffffff");
       } else {
@@ -52,6 +56,7 @@ export function CategoryDialog({
 
   const resetForm = () => {
     setName("");
+    setOrder("");
     setImage(null);
     setImagePreview("");
     setBgColor("#ffffff");
@@ -80,10 +85,21 @@ export function CategoryDialog({
       return;
     }
 
+    if (order) {
+      const parsedOrder = Number.parseInt(order, 10);
+      if (Number.isNaN(parsedOrder) || parsedOrder < 1) {
+        toast.error("Order must be a positive number");
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const formData = new FormData();
       formData.append("name", name);
+      if (order) {
+        formData.append("order", order);
+      }
       formData.append("bgColor", bgColor); // ✅ send bgColor to match backend
 
       if (image) {
@@ -126,6 +142,19 @@ export function CategoryDialog({
               placeholder="Type category name here..."
               value={name}
               onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+
+          {/* Order */}
+          <div className="space-y-2">
+            <Label htmlFor="order">Order</Label>
+            <Input
+              id="order"
+              type="number"
+              min="1"
+              placeholder="e.g. 1"
+              value={order}
+              onChange={(e) => setOrder(e.target.value)}
             />
           </div>
 

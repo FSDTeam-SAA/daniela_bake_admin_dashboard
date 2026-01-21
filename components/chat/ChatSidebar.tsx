@@ -51,7 +51,7 @@ export function ChatSidebar({ customers, selectedCustomer, onSelectCustomer, onS
               key={c.id}
               onClick={() => (c.conversationId ? onSelectCustomer(c) : onStartConversation(c))}
               className={cn(
-                "w-full text-left p-3 rounded-lg cursor-pointer transition-colors flex items-start gap-2",
+                "w-full text-left p-3 rounded-lg cursor-pointer bg-gray-100 transition-colors flex items-start gap-2",
                 isSelected ? "bg-blue-100" : "hover:bg-gray-50",
               )}
             >

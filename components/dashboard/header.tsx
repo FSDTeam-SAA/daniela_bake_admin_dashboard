@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useState } from "react";
 import {
@@ -16,7 +16,12 @@ import { useMutation } from "@tanstack/react-query";
 import { authAPI } from "@/lib/auth-api";
 import { toast } from "sonner";
 
-export function DashboardHeader({ user }: { user: any }) {
+interface DashboardHeaderProps {
+  user: any;
+  onOpenSidebar?: () => void;
+}
+
+export function DashboardHeader({ user, onOpenSidebar }: DashboardHeaderProps) {
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [passwords, setPasswords] = useState({
     currentPassword: "",
@@ -54,9 +59,18 @@ export function DashboardHeader({ user }: { user: any }) {
 
   return (
     <>
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="lg:hidden"
+              onClick={onOpenSidebar}
+            >
+              <Menu className="w-5 h-5" />
+            </Button>
             <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
           </div>
 

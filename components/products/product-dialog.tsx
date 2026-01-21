@@ -1,3 +1,4 @@
+// components/ProductDialog.tsx
 "use client"
 
 import type React from "react"
@@ -37,12 +38,22 @@ interface ProductImage {
 
 const MAX_IMAGES = 5
 
+const dayOptions = [
+  { value: "sun", label: "Sunday" },
+  { value: "mon", label: "Monday" },
+  { value: "tue", label: "Tuesday" },
+  { value: "wed", label: "Wednesday" },
+  { value: "thu", label: "Thursday" },
+  { value: "fri", label: "Friday" },
+  { value: "sat", label: "Saturday" },
+] as const
+
 export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: ProductDialogProps) {
   const [loading, setLoading] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [formData, setFormData] = useState({
     name: "",
-    category: "", // will hold category _id
+    category: "",
     description: "",
     price: "",
   })
@@ -50,6 +61,7 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
   const [ingredients, setIngredients] = useState<Ingredient[]>([
     { name: "", image: undefined, preview: "" },
   ])
+  const [availableDays, setAvailableDays] = useState<string[]>([])
 
   const isViewMode = mode === "view"
   const title = mode === "add" ? "Add Product" : mode === "edit" ? "Edit Product" : "Product Details"
@@ -57,19 +69,14 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
   useEffect(() => {
     if (!open) return
 
-    // load categories every time dialog opens
     loadCategories()
 
     if (product && (mode === "edit" || mode === "view")) {
       setFormData({
         name: product.name,
-        // product.category might be a string or an object
-        category:
-          typeof product.category === "string"
-            ? product.category
-            : product.category?._id ?? "",
+        category: typeof product.category === "string" ? product.category : product.category?._id ?? "",
         description: product.description || "",
-        price: product.price.toString(),
+        price: String(product.price ?? ""),
       })
 
       const incomingImages =
@@ -99,31 +106,37 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
       } else {
         setIngredients([{ name: "", image: undefined, preview: "" }])
       }
+
+      const productDays =
+        product.availableDays && product.availableDays.length > 0
+          ? product.availableDays.map((d: string) => d.toLowerCase())
+          : []
+      setAvailableDays(productDays)
     } else {
       resetForm()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, product, mode])
 
   const loadCategories = async () => {
     try {
       const res = await categoriesAPI.getCategories()
 
-      // Try to safely derive an array from whatever the API returns
       const cats: Category[] = Array.isArray(res)
         ? res
         : Array.isArray((res as any).data)
-        ? (res as any).data
-        : Array.isArray((res as any).data?.items)
-        ? (res as any).data.items
-        : Array.isArray((res as any).items)
-        ? (res as any).items
-        : []
+          ? (res as any).data
+          : Array.isArray((res as any).data?.items)
+            ? (res as any).data.items
+            : Array.isArray((res as any).items)
+              ? (res as any).items
+              : []
 
       setCategories(cats)
     } catch (error) {
       console.error("Failed to load categories:", error)
       toast.error("Failed to load categories")
-      setCategories([]) // keep it an array to avoid .map crash
+      setCategories([])
     }
   }
 
@@ -131,6 +144,7 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
     setFormData({ name: "", category: "", description: "", price: "" })
     setGalleryImages([])
     setIngredients([{ name: "", image: undefined, preview: "" }])
+    setAvailableDays([])
   }
 
   const generateImageId = () =>
@@ -163,7 +177,9 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
     })
 
     if (files.length > availableSlots) {
-      toast.error(`Only ${availableSlots} more image${availableSlots === 1 ? "" : "s"} can be added (max ${MAX_IMAGES}).`)
+      toast.error(
+        `Only ${availableSlots} more image${availableSlots === 1 ? "" : "s"} can be added (max ${MAX_IMAGES}).`,
+      )
     }
 
     e.target.value = ""
@@ -171,6 +187,19 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
 
   const handleRemoveImage = (id: string) => {
     setGalleryImages((prev) => prev.filter((img) => img.id !== id))
+  }
+
+  const handleIngredientImageChange = (index: number, file?: File) => {
+    if (!file) return
+    const next = [...ingredients]
+    next[index].image = file
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      next[index].preview = reader.result as string
+      setIngredients(next)
+    }
+    reader.readAsDataURL(file)
   }
 
   const addIngredient = () => {
@@ -184,9 +213,13 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
   }
 
   const updateIngredientName = (index: number, name: string) => {
-    const newIngredients = [...ingredients]
-    newIngredients[index].name = name
-    setIngredients(newIngredients)
+    const next = [...ingredients]
+    next[index].name = name
+    setIngredients(next)
+  }
+
+  const toggleDay = (dayValue: string) => {
+    setAvailableDays((prev) => (prev.includes(dayValue) ? prev.filter((d) => d !== dayValue) : [...prev, dayValue]))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -197,7 +230,10 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
       toast.error("Please fill in all required fields")
       return
     }
-
+    if (availableDays.length === 0) {
+      toast.error("Select at least one available day")
+      return
+    }
     if (galleryImages.length === 0) {
       toast.error("Please add at least one product image (up to 5)")
       return
@@ -210,23 +246,33 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
     try {
       const data = new FormData()
       data.append("name", formData.name)
-      data.append("category", formData.category) // categoryId
+      data.append("category", formData.category)
       data.append("description", formData.description)
       data.append("price", formData.price)
       data.append("existingImages", JSON.stringify(existingImages))
+      data.append("availableDays", JSON.stringify(availableDays))
 
       newImages.forEach((img) => {
         if (img.file) data.append("images", img.file)
       })
 
-      const ingredientsPayload = ingredients
+      const cleanedIngredients = ingredients
         .filter((ing) => ing.name.trim() !== "")
         .map((ing) => ({
           name: ing.name,
           ...(typeof ing.image === "string" ? { image: ing.image } : {}),
         }))
 
-      data.append("ingredients", JSON.stringify(ingredientsPayload))
+      data.append("ingredients", JSON.stringify(cleanedIngredients))
+
+      // append ingredient files in ingredient order (skips ones without file)
+      ingredients
+        .filter((ing) => ing.name.trim() !== "")
+        .forEach((ing) => {
+          if (ing.image instanceof File) {
+            data.append("ingredientImage", ing.image)
+          }
+        })
 
       if (mode === "add") {
         await productsAPI.createProduct(data)
@@ -239,9 +285,9 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
       onSuccess?.()
       onOpenChange(false)
       resetForm()
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
-      toast.error((error && error.response && error.response.data && error.response.data.message) || "Failed to save product")
+      toast.error(error?.response?.data?.message || "Failed to save product")
     } finally {
       setLoading(false)
     }
@@ -269,7 +315,7 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
             </div>
           </div>
           <p className="text-sm text-gray-500">
-            Overview <span className="mx-2">›</span> Product <span className="mx-2">›</span>{" "}
+            Overview <span className="mx-2">ƒ?§</span> Product <span className="mx-2">ƒ?§</span>{" "}
             {mode === "add" ? "Add Product" : product?.name}
           </p>
         </DialogHeader>
@@ -338,6 +384,34 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
                 disabled={isViewMode}
               />
             </div>
+
+            {/* Available Days */}
+            <div className="space-y-3">
+              <Label>Available Days</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {dayOptions.map((day) => (
+                  <div key={day.value} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={`day-${day.value}`}
+                      checked={availableDays.includes(day.value)}
+                      onChange={() => toggleDay(day.value)}
+                      disabled={isViewMode}
+                      className="h-4 w-4 rounded border-gray-300 text-[#5B9FED] focus:ring-[#5B9FED] cursor-pointer"
+                    />
+                    <label
+                      htmlFor={`day-${day.value}`}
+                      className="text-sm font-medium leading-none cursor-pointer select-none"
+                    >
+                      {day.label}
+                    </label>
+                  </div>
+                ))}
+              </div>
+              {availableDays.length === 0 && !isViewMode && (
+                <p className="text-sm text-red-600 mt-1">Please select at least one day</p>
+              )}
+            </div>
           </div>
 
           {/* Media */}
@@ -350,10 +424,7 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                       {galleryImages.map((image, idx) => (
-                        <div
-                          key={image.id}
-                          className="relative group rounded-lg overflow-hidden bg-gray-50"
-                        >
+                        <div key={image.id} className="relative group rounded-lg overflow-hidden bg-gray-50">
                           <img
                             src={image.preview || "/placeholder.svg"}
                             alt={`Product image ${idx + 1}`}
@@ -405,9 +476,7 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
                     <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                       <Upload className="w-6 h-6 text-blue-600" />
                     </div>
-                    <p className="text-sm text-gray-600">
-                      Add up to five images. The first becomes the cover.
-                    </p>
+                    <p className="text-sm text-gray-600">Add up to five images. The first becomes the cover.</p>
                     {!isViewMode && (
                       <Button
                         type="button"
@@ -437,6 +506,7 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
           {/* Ingredients */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Add Ingredient</h3>
+
             {ingredients.map((ingredient, index) => (
               <div key={index} className="space-y-4 p-4 border border-gray-200 rounded-lg">
                 <div className="flex items-center justify-between">
@@ -463,12 +533,56 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
                     disabled={isViewMode}
                   />
                 </div>
+
+                {/* Ingredient image */}
+                <div className="space-y-2">
+                  <Label>Ingredient Image</Label>
+
+                  {ingredient.preview ? (
+                    <div className="space-y-2">
+                      <img src={ingredient.preview} alt="Ingredient preview" className="max-h-32 rounded-lg object-cover" />
+                      {!isViewMode && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const next = [...ingredients]
+                            next[index].image = undefined
+                            next[index].preview = ""
+                            setIngredients(next)
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    !isViewMode && (
+                      <Button type="button" variant="outline" size="sm" asChild>
+                        <label className="cursor-pointer">
+                          Add Ingredient Image
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleIngredientImageChange(index, e.target.files?.[0])}
+                          />
+                        </label>
+                      </Button>
+                    )
+                  )}
+                </div>
               </div>
             ))}
 
             {!isViewMode && (
-              <Button type="button" onClick={addIngredient} className="gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white">
-                <Plus className="w-4 h-4 mr-2" />
+              <Button
+                type="button"
+                onClick={addIngredient}
+                className="gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white"
+              >
+                <Plus className="w-4 h-4" />
                 Add More Ingredient
               </Button>
             )}

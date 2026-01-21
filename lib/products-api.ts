@@ -1,9 +1,20 @@
 import apiClient from "./api"
 import type { PaginatedResponse, Product } from "./types"
 
+export type ProductQueryParams = {
+  page?: number
+  limit?: number
+  sort?: string
+  category?: string
+  search?: string
+  minPrice?: number
+  maxPrice?: number
+  day?: string
+}
+
 export const productsAPI = {
-  getProducts: async (page = 1, limit = 10): Promise<PaginatedResponse<Product>> => {
-    const response = await apiClient.get("/items", { params: { page, limit } })
+  getProducts: async (params: ProductQueryParams): Promise<PaginatedResponse<Product>> => {
+    const response = await apiClient.get<PaginatedResponse<Product>>("/items", { params })
     return response.data
   },
 

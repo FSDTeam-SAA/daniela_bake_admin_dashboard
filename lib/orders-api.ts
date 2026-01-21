@@ -1,20 +1,26 @@
 import apiClient from "./api"
-import type { PaginatedResponse, Order } from "./types"
+import type { Order, OrdersPaginatedResponse } from "./types"
+
+export type OrderQueryParams = {
+  page?: number
+  limit?: number
+  sort?: string
+  status?: Order["status"]
+  user?: string
+}
 
 export const ordersAPI = {
-  getOrders: async (page = 1, limit = 10, status?: string): Promise<PaginatedResponse<Order>> => {
-    const params: any = { page, limit }
-    if (status) params.status = status
-    const response = await apiClient.get("/orders", { params })
+  getOrders: async (params: OrderQueryParams): Promise<OrdersPaginatedResponse> => {
+    const response = await apiClient.get<OrdersPaginatedResponse>("/orders", { params })
     return response.data
   },
 
   getOrderById: async (id: string): Promise<Order> => {
-    const response = await apiClient.get(`/orders/${id}`)
+    const response = await apiClient.get<{ success: boolean; message: string; data: Order }>(`/orders/${id}`)
     return response.data.data
   },
 
-  updateOrderStatus: async (id: string, data: { status?: string; paymentStatus?: string }) => {
+  updateOrderStatus: async (id: string, data: { status?: Order["status"]; paymentStatus?: Order["paymentStatus"] }) => {
     const response = await apiClient.put(`/orders/${id}`, data)
     return response.data
   },
