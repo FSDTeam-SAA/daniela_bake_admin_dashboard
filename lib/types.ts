@@ -18,10 +18,11 @@ export interface AuthResponse {
 export interface Product {
   _id: string
   name: string
-  category: string
+  category: string | { _id: string; name: string; image?: string }
   description: string
   price: number
-  image: string
+  image?: string
+  images?: string[]
   ingredients?: Array<{
     name: string
     image?: string

@@ -28,6 +28,15 @@ interface Ingredient {
   preview?: string
 }
 
+interface ProductImage {
+  id: string
+  file?: File
+  preview: string
+  isNew: boolean
+}
+
+const MAX_IMAGES = 5
+
 export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: ProductDialogProps) {
   const [loading, setLoading] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
@@ -37,8 +46,7 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
     description: "",
     price: "",
   })
-  const [productImage, setProductImage] = useState<File | null>(null)
-  const [productImagePreview, setProductImagePreview] = useState<string>("")
+  const [galleryImages, setGalleryImages] = useState<ProductImage[]>([])
   const [ingredients, setIngredients] = useState<Ingredient[]>([
     { name: "", image: undefined, preview: "" },
   ])
@@ -63,7 +71,22 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
         description: product.description || "",
         price: product.price.toString(),
       })
-      setProductImagePreview(product.image || "")
+
+      const incomingImages =
+        (Array.isArray((product as any).images) && (product as any).images.length
+          ? (product as any).images
+          : product.image
+          ? [product.image]
+          : []
+        ).slice(0, MAX_IMAGES)
+
+      setGalleryImages(
+        incomingImages.map((img, index) => ({
+          id: `${product._id ?? "existing"}-${index}`,
+          preview: img,
+          isNew: false,
+        })),
+      )
 
       if (product.ingredients && product.ingredients.length > 0) {
         setIngredients(
@@ -106,33 +129,48 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
 
   const resetForm = () => {
     setFormData({ name: "", category: "", description: "", price: "" })
-    setProductImage(null)
-    setProductImagePreview("")
+    setGalleryImages([])
     setIngredients([{ name: "", image: undefined, preview: "" }])
   }
 
-  const handleProductImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setProductImage(file)
-      const reader = new FileReader()
-      reader.onloadend = () => setProductImagePreview(reader.result as string)
-      reader.readAsDataURL(file)
-    }
-  }
+  const generateImageId = () =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2)
 
-  const handleIngredientImageChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
+  const handleAddProductImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+
+    const availableSlots = MAX_IMAGES - galleryImages.length
+    if (availableSlots <= 0) {
+      toast.error(`You can upload up to ${MAX_IMAGES} images`)
+      e.target.value = ""
+      return
+    }
+
+    const selectedFiles = Array.from(files).slice(0, availableSlots)
+
+    selectedFiles.forEach((file) => {
       const reader = new FileReader()
       reader.onloadend = () => {
-        const newIngredients = [...ingredients]
-        newIngredients[index].image = file
-        newIngredients[index].preview = reader.result as string
-        setIngredients(newIngredients)
+        setGalleryImages((prev) => [
+          ...prev,
+          { id: generateImageId(), file, preview: reader.result as string, isNew: true },
+        ])
       }
       reader.readAsDataURL(file)
+    })
+
+    if (files.length > availableSlots) {
+      toast.error(`Only ${availableSlots} more image${availableSlots === 1 ? "" : "s"} can be added (max ${MAX_IMAGES}).`)
     }
+
+    e.target.value = ""
+  }
+
+  const handleRemoveImage = (id: string) => {
+    setGalleryImages((prev) => prev.filter((img) => img.id !== id))
   }
 
   const addIngredient = () => {
@@ -152,57 +190,62 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
-  if (isViewMode) return
+    e.preventDefault()
+    if (isViewMode) return
 
-  if (!formData.name || !formData.category || !formData.price) {
-    toast.error("Please fill in all required fields")
-    return
-  }
-
-  setLoading(true)
-  try {
-    const data = new FormData()
-    data.append("name", formData.name)
-    data.append("category", formData.category) // categoryId
-    data.append("description", formData.description)
-    data.append("price", formData.price)
-
-    // ✅ only one file field: "image"
-    if (productImage) {
-      data.append("image", productImage)
+    if (!formData.name || !formData.category || !formData.price) {
+      toast.error("Please fill in all required fields")
+      return
     }
 
-    // ✅ ingredients as JSON string, like in Postman
-    const ingredientsPayload = ingredients
-      .filter((ing) => ing.name.trim() !== "")
-      .map((ing) => ({
-        name: ing.name,
-        // if editing and existing image is a URL/string, you can keep it:
-        ...(typeof ing.image === "string" ? { image: ing.image } : {}),
-      }))
-
-    data.append("ingredients", JSON.stringify(ingredientsPayload))
-
-    if (mode === "add") {
-      await productsAPI.createProduct(data)
-      toast.success("Product added successfully")
-    } else {
-      await productsAPI.updateProduct(product!._id, data)
-      toast.success("Product updated successfully")
+    if (galleryImages.length === 0) {
+      toast.error("Please add at least one product image (up to 5)")
+      return
     }
 
-    onSuccess?.()
-    onOpenChange(false)
-    resetForm()
-  } catch (error: any) {
-    console.error(error)
-    toast.error(error?.response?.data?.message || "Failed to save product")
-  } finally {
-    setLoading(false)
-  }
-}
+    const existingImages = galleryImages.filter((img) => !img.isNew).map((img) => img.preview)
+    const newImages = galleryImages.filter((img) => img.isNew && img.file)
 
+    setLoading(true)
+    try {
+      const data = new FormData()
+      data.append("name", formData.name)
+      data.append("category", formData.category) // categoryId
+      data.append("description", formData.description)
+      data.append("price", formData.price)
+      data.append("existingImages", JSON.stringify(existingImages))
+
+      newImages.forEach((img) => {
+        if (img.file) data.append("images", img.file)
+      })
+
+      const ingredientsPayload = ingredients
+        .filter((ing) => ing.name.trim() !== "")
+        .map((ing) => ({
+          name: ing.name,
+          ...(typeof ing.image === "string" ? { image: ing.image } : {}),
+        }))
+
+      data.append("ingredients", JSON.stringify(ingredientsPayload))
+
+      if (mode === "add") {
+        await productsAPI.createProduct(data)
+        toast.success("Product added successfully")
+      } else {
+        await productsAPI.updateProduct(product!._id, data)
+        toast.success("Product updated successfully")
+      }
+
+      onSuccess?.()
+      onOpenChange(false)
+      resetForm()
+    } catch (error) {
+      console.error(error)
+      toast.error((error && error.response && error.response.data && error.response.data.message) || "Failed to save product")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -301,47 +344,86 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Media</h3>
             <div className="space-y-2">
-              <Label>Photo</Label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                {productImagePreview ? (
-                  <div className="space-y-2">
-                    <img
-                      src={productImagePreview || "/placeholder.svg"}
-                      alt="Product preview"
-                      className="mx-auto max-h-48 rounded-lg object-cover"
-                    />
-                    {!isViewMode && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setProductImage(null)
-                          setProductImagePreview("")
-                        }}
-                      >
-                        Remove
-                      </Button>
+              <Label>Photos (up to 5, first is the cover)</Label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                {galleryImages.length ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      {galleryImages.map((image, idx) => (
+                        <div
+                          key={image.id}
+                          className="relative group rounded-lg overflow-hidden bg-gray-50"
+                        >
+                          <img
+                            src={image.preview || "/placeholder.svg"}
+                            alt={`Product image ${idx + 1}`}
+                            className="w-full h-40 object-cover"
+                          />
+                          <div className="absolute bottom-2 left-2 text-xs bg-black/60 text-white px-2 py-1 rounded-full">
+                            {idx === 0 ? "Cover" : `Image ${idx + 1}`}
+                          </div>
+                          {!isViewMode && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="absolute top-2 right-2 bg-white/80 hover:bg-white"
+                              onClick={() => handleRemoveImage(image.id)}
+                            >
+                              Remove
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {!isViewMode && galleryImages.length < MAX_IMAGES && (
+                      <div className="flex justify-center">
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white"
+                          asChild
+                        >
+                          <label htmlFor="product-images" className="cursor-pointer">
+                            <Upload className="w-4 h-4" />
+                            Add Image
+                            <input
+                              id="product-images"
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              className="hidden"
+                              onChange={handleAddProductImages}
+                            />
+                          </label>
+                        </Button>
+                      </div>
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-center">
                     <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                       <Upload className="w-6 h-6 text-blue-600" />
                     </div>
                     <p className="text-sm text-gray-600">
-                      Drag and drop image here, or click add image
+                      Add up to five images. The first becomes the cover.
                     </p>
                     {!isViewMode && (
-                      <Button type="button" size="sm" className="gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white" asChild>
-                        <label htmlFor="product-image" className="cursor-pointer">
-                          Add Image
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="gap-2 bg-[#5B9FED] hover:bg-[#4A8FDD] text-white"
+                        asChild
+                      >
+                        <label htmlFor="product-images" className="cursor-pointer">
+                          Add Images
                           <input
-                            id="product-image"
+                            id="product-images"
                             type="file"
                             accept="image/*"
+                            multiple
                             className="hidden"
-                            onChange={handleProductImageChange}
+                            onChange={handleAddProductImages}
                           />
                         </label>
                       </Button>

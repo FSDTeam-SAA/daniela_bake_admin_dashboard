@@ -92,29 +92,33 @@ export default function OrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredOrders.map((order: any) => (
-                  <tr key={order._id} className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium">#{order._id.slice(-6)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        {order.items[0]?.item.image && (
-                          <div className="w-10 h-10 relative rounded-lg overflow-hidden">
-                            <Image
-                              src={order.items[0].item.image || "/placeholder.svg"}
-                              alt={order.items[0].item.name}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-medium">{order.items[0]?.item.name}</p>
-                          {order.items.length > 1 && (
-                            <p className="text-xs text-gray-500">+{order.items.length - 1} more</p>
+                {filteredOrders.map((order: any) => {
+                  const firstItem = order.items?.[0]?.item
+                  const coverImage = firstItem?.images?.[0] || firstItem?.image
+
+                  return (
+                    <tr key={order._id} className="border-b border-gray-200 hover:bg-gray-50">
+                      <td className="px-4 py-3 font-medium">#{order._id.slice(-6)}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {coverImage && (
+                            <div className="w-10 h-10 relative rounded-lg overflow-hidden">
+                              <Image
+                                src={coverImage || "/placeholder.svg"}
+                                alt={firstItem?.name || "Order item"}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
                           )}
+                          <div>
+                            <p className="font-medium">{firstItem?.name}</p>
+                            {order.items.length > 1 && (
+                              <p className="text-xs text-gray-500">+{order.items.length - 1} more</p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
                     <td className="px-4 py-3">{format(new Date(order.createdAt), "dd MMM, yyyy")}</td>
                     <td className="px-4 py-3">
                       <div>
@@ -134,7 +138,7 @@ export default function OrdersPage() {
                                 : "bg-orange-300 hover:bg-orange-400 text-white"
                             }`}
                           >
-                            {order.paymentStatus === "Paid" ? "Done ✓" : "Hold ⏱"}
+                            {order.paymentStatus === "Paid" ? "Done" : "Hold"}
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -218,7 +222,8 @@ export default function OrdersPage() {
                       </Button>
                     </td>
                   </tr>
-                ))}
+                )
+              })}
               </tbody>
             </table>
           </div>
@@ -297,11 +302,11 @@ export default function OrdersPage() {
               <div>
                 <h4 className="font-semibold text-gray-900 mb-3">Order Items</h4>
                 <div className="space-y-3">
-                  {selectedOrder.items.map((item: any) => (
+                    {selectedOrder.items.map((item: any) => (
                     <div key={item._id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
                       <div className="w-12 h-12 relative rounded-md overflow-hidden bg-white">
                         <Image
-                          src={item.item.image || "/placeholder.svg"}
+                          src={item.item.images?.[0] || item.item.image || "/placeholder.svg"}
                           alt={item.item.name}
                           fill
                           className="object-cover"

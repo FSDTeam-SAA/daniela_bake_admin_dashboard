@@ -156,7 +156,7 @@ export default function ProductsPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <img
-                            src={product.image || "/placeholder.svg"}
+                            src={product.images?.[0] || product.image || "/placeholder.svg"}
                             alt={product.name}
                             className="w-8 h-8 rounded object-cover"
                           />

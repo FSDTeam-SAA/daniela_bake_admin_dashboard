@@ -101,8 +101,8 @@ export default function DeliveredOrdersPage() {
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 relative rounded-lg overflow-hidden bg-gray-100">
                         <Image
-                          src={order.items[0]?.item.image || "/placeholder.svg"}
-                          alt={order.items[0]?.item.name}
+                          src={order.items[0]?.item.images?.[0] || order.items[0]?.item.image || "/placeholder.svg"}
+                          alt={order.items[0]?.item.name || "Order item"}
                           fill
                           className="object-cover"
                         />

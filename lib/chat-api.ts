@@ -35,7 +35,7 @@ interface ApiResponse<T> {
   data: T
 }
 
-const BASE = `${process.env.NEXT_PUBLIC_BASE_URL}/api/chat`
+const BASE = `${process.env.NEXT_PUBLIC_BASE_URL}/chat`
 
 async function apiFetch<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   // Get the token from NextAuth session
