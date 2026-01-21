@@ -38,16 +38,6 @@ interface ProductImage {
 
 const MAX_IMAGES = 5
 
-const dayOptions = [
-  { value: "sun", label: "Sunday" },
-  { value: "mon", label: "Monday" },
-  { value: "tue", label: "Tuesday" },
-  { value: "wed", label: "Wednesday" },
-  { value: "thu", label: "Thursday" },
-  { value: "fri", label: "Friday" },
-  { value: "sat", label: "Saturday" },
-] as const
-
 export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: ProductDialogProps) {
   const [loading, setLoading] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
@@ -61,7 +51,6 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
   const [ingredients, setIngredients] = useState<Ingredient[]>([
     { name: "", image: undefined, preview: "" },
   ])
-  const [availableDays, setAvailableDays] = useState<string[]>([])
 
   const isViewMode = mode === "view"
   const title = mode === "add" ? "Add Product" : mode === "edit" ? "Edit Product" : "Product Details"
@@ -106,12 +95,6 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
       } else {
         setIngredients([{ name: "", image: undefined, preview: "" }])
       }
-
-      const productDays =
-        product.availableDays && product.availableDays.length > 0
-          ? product.availableDays.map((d: string) => d.toLowerCase())
-          : []
-      setAvailableDays(productDays)
     } else {
       resetForm()
     }
@@ -144,7 +127,6 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
     setFormData({ name: "", category: "", description: "", price: "" })
     setGalleryImages([])
     setIngredients([{ name: "", image: undefined, preview: "" }])
-    setAvailableDays([])
   }
 
   const generateImageId = () =>
@@ -218,20 +200,12 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
     setIngredients(next)
   }
 
-  const toggleDay = (dayValue: string) => {
-    setAvailableDays((prev) => (prev.includes(dayValue) ? prev.filter((d) => d !== dayValue) : [...prev, dayValue]))
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (isViewMode) return
 
     if (!formData.name || !formData.category || !formData.price) {
       toast.error("Please fill in all required fields")
-      return
-    }
-    if (availableDays.length === 0) {
-      toast.error("Select at least one available day")
       return
     }
     if (galleryImages.length === 0) {
@@ -250,7 +224,6 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
       data.append("description", formData.description)
       data.append("price", formData.price)
       data.append("existingImages", JSON.stringify(existingImages))
-      data.append("availableDays", JSON.stringify(availableDays))
 
       newImages.forEach((img) => {
         if (img.file) data.append("images", img.file)
@@ -382,34 +355,6 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                 disabled={isViewMode}
               />
-            </div>
-
-            {/* Available Days */}
-            <div className="space-y-3">
-              <Label>Available Days</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {dayOptions.map((day) => (
-                  <div key={day.value} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id={`day-${day.value}`}
-                      checked={availableDays.includes(day.value)}
-                      onChange={() => toggleDay(day.value)}
-                      disabled={isViewMode}
-                      className="h-4 w-4 rounded border-gray-300 text-[#5B9FED] focus:ring-[#5B9FED] cursor-pointer"
-                    />
-                    <label
-                      htmlFor={`day-${day.value}`}
-                      className="text-sm font-medium leading-none cursor-pointer select-none"
-                    >
-                      {day.label}
-                    </label>
-                  </div>
-                ))}
-              </div>
-              {availableDays.length === 0 && !isViewMode && (
-                <p className="text-sm text-red-600 mt-1">Please select at least one day</p>
-              )}
             </div>
           </div>
 

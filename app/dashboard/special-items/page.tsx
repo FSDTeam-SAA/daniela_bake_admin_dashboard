@@ -12,14 +12,14 @@ import { toast } from "sonner"
 import Image from "next/image"
 
 const dayOptions = [
-  { value: "sun", label: "Sunday" },
   { value: "mon", label: "Monday" },
   { value: "tue", label: "Tuesday" },
   { value: "wed", label: "Wednesday" },
   { value: "thu", label: "Thursday" },
   { value: "fri", label: "Friday" },
-  { value: "sat", label: "Saturday" },
 ] as const
+
+const allowedDayValues = dayOptions.map((d) => d.value)
 
 type SpecialMap = Record<string, string[]>
 
@@ -32,7 +32,7 @@ const arraysEqual = (a: string[] = [], b: string[] = []) => {
 export default function SpecialItemsPage() {
   const [page] = useState(1)
   const [limit] = useState(200)
-  const [selectedDay, setSelectedDay] = useState<string>("sun")
+  const [selectedDay, setSelectedDay] = useState<string>("mon")
   const [search, setSearch] = useState("")
 
   const { data, isLoading, refetch } = useQuery({
@@ -50,7 +50,8 @@ export default function SpecialItemsPage() {
   useEffect(() => {
     const map: SpecialMap = {}
     items.forEach((item: Product) => {
-      map[item._id] = item.specialDays ?? []
+      const validDays = (item.specialDays ?? []).filter((day) => allowedDayValues.includes(day))
+      map[item._id] = validDays
     })
     setDraftSpecialDays(map)
     setOriginalSpecialDays(map)
