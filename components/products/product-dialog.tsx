@@ -315,8 +315,7 @@ export function ProductDialog({ open, onOpenChange, product, mode, onSuccess }: 
             </div>
           </div>
           <p className="text-sm text-gray-500">
-            Overview <span className="mx-2">ƒ?§</span> Product <span className="mx-2">ƒ?§</span>{" "}
-            {mode === "add" ? "Add Product" : product?.name}
+            Overview &gt; Product &gt; {mode === "add" ? "Add Product" : product?.name}
           </p>
         </DialogHeader>
 

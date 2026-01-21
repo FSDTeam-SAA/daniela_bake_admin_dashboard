@@ -37,6 +37,7 @@ export default function OrdersPage() {
   const [status, setStatus] = useState<"" | Order["status"]>("")
   const [paymentStatus, setPaymentStatus] = useState<"" | Order["paymentStatus"]>("")
   const [sort, setSort] = useState<string>("-createdAt")
+  const [timeRange, setTimeRange] = useState<"all" | "day" | "week" | "month" | "year">("all")
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null)
@@ -47,16 +48,16 @@ export default function OrdersPage() {
   const params: OrderQueryParams = useMemo(() => {
     const p: OrderQueryParams = { page, limit, sort }
     if (status) p.status = status
-    // If your backend supports paymentStatus query, keep it:
     if (paymentStatus) p.paymentStatus = paymentStatus
+    if (timeRange && timeRange !== "all") p.timeRange = timeRange
     return p
-  }, [page, limit, sort, status, paymentStatus])
+  }, [page, limit, sort, status, paymentStatus, timeRange])
 
   // ✅ reset page when filters change (not search)
   useEffect(() => {
     setPage(1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, paymentStatus, sort])
+  }, [status, paymentStatus, sort, timeRange])
 
   const { data: ordersData, isLoading, isFetching } = useQuery({
     queryKey: ["orders", params],
@@ -108,12 +109,16 @@ export default function OrdersPage() {
   }, [orders, searchTerm])
 
   const activeFiltersCount =
-    (status ? 1 : 0) + (paymentStatus ? 1 : 0) + (sort !== "-createdAt" ? 1 : 0)
+    (status ? 1 : 0) +
+    (paymentStatus ? 1 : 0) +
+    (timeRange !== "all" ? 1 : 0) +
+    (sort !== "-createdAt" ? 1 : 0)
 
   const clearFilters = () => {
     setStatus("")
     setPaymentStatus("")
     setSort("-createdAt")
+    setTimeRange("all")
     setPage(1)
     setFiltersOpen(false)
   }
@@ -221,6 +226,7 @@ export default function OrdersPage() {
                         { label: "Paid", value: "Paid" },
                         { label: "Pending", value: "Pending" },
                         { label: "Failed", value: "Failed" },
+                        { label: "Refunded", value: "Refunded" },
                       ] as const
                     ).map((opt) => (
                       <label key={opt.label} className="flex items-center gap-2 text-sm text-gray-700">
@@ -229,6 +235,32 @@ export default function OrdersPage() {
                           name="paymentStatus"
                           checked={paymentStatus === opt.value}
                           onChange={() => setPaymentStatus(opt.value)}
+                        />
+                        {opt.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Time Range */}
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-gray-900 mb-2">Time Range</p>
+                  <div className="space-y-2">
+                    {(
+                      [
+                        { label: "All", value: "all" },
+                        { label: "Today", value: "day" },
+                        { label: "This Week", value: "week" },
+                        { label: "This Month", value: "month" },
+                        { label: "This Year", value: "year" },
+                      ] as const
+                    ).map((opt) => (
+                      <label key={opt.label} className="flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          type="radio"
+                          name="timeRange"
+                          checked={timeRange === opt.value}
+                          onChange={() => setTimeRange(opt.value)}
                         />
                         {opt.label}
                       </label>
@@ -328,10 +360,14 @@ export default function OrdersPage() {
                               className={`${
                                 order.paymentStatus === "Paid"
                                   ? "bg-[#83DA71] hover:bg-green-500 text-white"
-                                  : "bg-orange-300 hover:bg-orange-400 text-white"
+                                  : order.paymentStatus === "Failed"
+                                    ? "bg-red-300 hover:bg-red-400 text-white"
+                                    : order.paymentStatus === "Refunded"
+                                      ? "bg-gray-300 hover:bg-gray-400 text-white"
+                                      : "bg-orange-300 hover:bg-orange-400 text-white"
                               }`}
                             >
-                              {order.paymentStatus === "Paid" ? "Done" : "Hold"}
+                              {order.paymentStatus ?? "--"}
                             </Button>
                           </DropdownMenuTrigger>
 
@@ -358,15 +394,26 @@ export default function OrdersPage() {
                               Mark as Pending
                             </DropdownMenuItem>
 
+                          <DropdownMenuItem
+                            onClick={() =>
+                              updateStatusMutation.mutate({
+                                id: order._id,
+                                paymentStatus: "Failed",
+                              })
+                            }
+                          >
+                            Mark as Failed
+                          </DropdownMenuItem>
+
                             <DropdownMenuItem
                               onClick={() =>
                                 updateStatusMutation.mutate({
                                   id: order._id,
-                                  paymentStatus: "Failed",
+                                  paymentStatus: "Refunded",
                                 })
                               }
                             >
-                              Mark as Failed
+                              Mark as Refunded
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

@@ -34,6 +34,7 @@ export interface Product {
   price: number
   image?: string
   images?: string[]
+  specialDays?: string[]
   ingredients?: Array<{
     name: string
     image?: string
@@ -70,7 +71,7 @@ export interface Order {
   address: string
   phone: string
   status: "Pending" | "Processing" | "Delivered" | "Cancelled"
-  paymentStatus: "Paid" | "Pending" | "Failed"
+  paymentStatus: "Paid" | "Pending" | "Failed" | "Refunded"
   estimatedDelivery: string
   createdAt: string
   updatedAt: string

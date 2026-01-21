@@ -6,7 +6,9 @@ export type OrderQueryParams = {
   limit?: number
   sort?: string
   status?: Order["status"]
+  paymentStatus?: Order["paymentStatus"]
   user?: string
+  timeRange?: "day" | "week" | "month" | "year" | "all"
 }
 
 export const ordersAPI = {

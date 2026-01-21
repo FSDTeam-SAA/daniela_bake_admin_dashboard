@@ -8,7 +8,7 @@ export type DashboardOverviewAPIResponse = {
     totalOrders: number
   }
   charts: {
-    weeklyPerformance: Array<{
+    performance: Array<{
       name: string
       orders: number
       revenue: number
@@ -25,8 +25,8 @@ export type DashboardOverviewAPIResponse = {
 }
 
 export const dashbordOverviewAPI = {
-  getDashboardOverview: async (): Promise<DashboardOverviewAPIResponse> => {
-    const response = await apiClient.get("/dashboard/overview")
+  getDashboardOverview: async (timeRange: "day" | "week" | "month" | "year" | "all" = "week"): Promise<DashboardOverviewAPIResponse> => {
+    const response = await apiClient.get("/dashboard/overview", { params: { timeRange } })
     return response.data.data
   },
 }

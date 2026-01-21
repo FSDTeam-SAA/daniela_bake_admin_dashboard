@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { dashbordOverviewAPI } from "@/lib/dashbord-overview"
 import {
@@ -16,16 +17,26 @@ import {
 } from "recharts"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { ShoppingCart, Coffee, TrendingUp, Wallet } from "lucide-react"
 
+const rangeOptions = [
+  { value: "day", label: "Day" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+  { value: "year", label: "Year" },
+] as const
+
 export function DashboardOverview() {
+  const [timeRange, setTimeRange] = useState<"day" | "week" | "month" | "year" | "all">("week")
+
   const { data, isLoading } = useQuery({
-    queryKey: ["dashboard", "overview"],
-    queryFn: () => dashbordOverviewAPI.getDashboardOverview(),
+    queryKey: ["dashboard", "overview", timeRange],
+    queryFn: () => dashbordOverviewAPI.getDashboardOverview(timeRange),
   })
 
   const statsData = data?.stats
-  const weekly = data?.charts?.weeklyPerformance ?? []
+  const performance = data?.charts?.performance ?? []
   const recentOrders = data?.recentOrders ?? []
 
   const stats = [
@@ -71,15 +82,33 @@ export function DashboardOverview() {
         })}
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {rangeOptions.map((opt) => (
+          <Button
+            key={opt.value}
+            variant={timeRange === opt.value ? "default" : "outline"}
+            className={
+              timeRange === opt.value
+                ? "bg-[#5B9FED] hover:bg-[#4A8FDD] text-white"
+                : "border-gray-200 text-gray-700"
+            }
+            size="sm"
+            onClick={() => setTimeRange(opt.value)}
+          >
+            {opt.label}
+          </Button>
+        ))}
+      </div>
+
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
-          <h3 className="text-lg font-bold mb-4">Weekly Orders</h3>
+          <h3 className="text-lg font-bold mb-4">Orders</h3>
           {isLoading ? (
             <Skeleton className="h-80" />
           ) : (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={weekly}>
+              <BarChart data={performance}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis allowDecimals={false} />
@@ -91,12 +120,12 @@ export function DashboardOverview() {
         </Card>
 
         <Card className="p-6">
-          <h3 className="text-lg font-bold mb-4">Weekly Revenue</h3>
+          <h3 className="text-lg font-bold mb-4">Revenue</h3>
           {isLoading ? (
             <Skeleton className="h-80" />
           ) : (
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={weekly}>
+              <LineChart data={performance}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
@@ -149,7 +178,7 @@ export function DashboardOverview() {
                                 : "bg-gray-100 text-gray-800"
                         }`}
                       >
-                        {o.status ?? "—"}
+                        {o.status ?? "Unknown"}
                       </span>
                     </td>
                   </tr>
