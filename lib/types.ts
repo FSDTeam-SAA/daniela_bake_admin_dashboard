@@ -39,7 +39,6 @@ export interface Product {
     name: string
     image?: string
   }>
-  availableDays?: string[]
   rating?: number
   reviewsCount?: number
   createdAt: string
@@ -70,6 +69,7 @@ export interface Order {
   totalAmount: number
   address: string
   phone: string
+  pickOrder?: boolean
   status: "Pending" | "Processing" | "Delivered" | "Cancelled"
   paymentStatus: "Paid" | "Pending" | "Failed" | "Refunded"
   estimatedDelivery: string

@@ -580,6 +580,9 @@ export default function OrdersPage() {
                     Payment: <span className="font-medium">{selectedOrder.paymentStatus ?? "—"}</span>
                   </p>
                   <p className="text-sm text-gray-600">
+                    Pickup: <span className="font-medium">{selectedOrder.pickOrder ? "Yes" : "No"}</span>
+                  </p>
+                  <p className="text-sm text-gray-600">
                     Total: <span className="font-bold">${Number(selectedOrder.totalAmount ?? 0)}</span>
                   </p>
                 </div>
