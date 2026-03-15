@@ -1,13 +1,15 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { productsAPI } from "@/lib/products-api"
-import type { Product } from "@/lib/types"
+import { categoriesAPI } from "@/lib/categories-api"
+import type { Category, Product } from "@/lib/types"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import Image from "next/image"
 
@@ -19,7 +21,7 @@ const dayOptions = [
   { value: "fri", label: "Friday" },
 ] as const
 
-const allowedDayValues = dayOptions.map((d) => d.value)
+const allowedDayValues: readonly string[] = dayOptions.map((d) => d.value)
 
 type SpecialMap = Record<string, string[]>
 
@@ -29,10 +31,14 @@ const arraysEqual = (a: string[] = [], b: string[] = []) => {
   return aSorted.length === bSorted.length && aSorted.every((v, i) => v === bSorted[i])
 }
 
+const getCategoryId = (item: Product) =>
+  typeof item.category === "string" ? item.category : item.category?._id ?? ""
+
 export default function SpecialItemsPage() {
   const [page] = useState(1)
   const [limit] = useState(200)
   const [selectedDay, setSelectedDay] = useState<string>("mon")
+  const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [search, setSearch] = useState("")
 
   const { data, isLoading, refetch } = useQuery({
@@ -42,6 +48,33 @@ export default function SpecialItemsPage() {
   })
 
   const items: Product[] = useMemo(() => data?.data?.items ?? [], [data])
+
+  const { data: categoriesData = [] } = useQuery({
+    queryKey: ["categories"],
+    queryFn: categoriesAPI.getCategories,
+  })
+
+  const categories: Category[] = useMemo(() => {
+    if (!categoriesData) return []
+    if (Array.isArray(categoriesData)) return categoriesData
+    if (Array.isArray((categoriesData as any)?.data)) return (categoriesData as any).data
+    if (Array.isArray((categoriesData as any)?.data?.items)) return (categoriesData as any).data.items
+    if (Array.isArray((categoriesData as any)?.items)) return (categoriesData as any).items
+    return []
+  }, [categoriesData])
+
+  const categoryNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    categories.forEach((category) => {
+      map.set(category._id, category.name)
+    })
+    return map
+  }, [categories])
+
+  const getCategoryName = (item: Product) => {
+    if (typeof item.category !== "string") return item.category?.name ?? "Uncategorized"
+    return categoryNameById.get(item.category) ?? item.category
+  }
 
   const [draftSpecialDays, setDraftSpecialDays] = useState<SpecialMap>({})
   const [originalSpecialDays, setOriginalSpecialDays] = useState<SpecialMap>({})
@@ -59,9 +92,34 @@ export default function SpecialItemsPage() {
 
   const filteredItems = useMemo(() => {
     const term = search.trim().toLowerCase()
-    if (!term) return items
-    return items.filter((item) => item.name.toLowerCase().includes(term))
-  }, [items, search])
+    return items
+      .filter((item) => (term ? item.name.toLowerCase().includes(term) : true))
+      .filter((item) => (selectedCategory === "all" ? true : getCategoryId(item) === selectedCategory))
+      .sort((a, b) => {
+        const categoryCompare = getCategoryName(a).localeCompare(getCategoryName(b))
+        if (categoryCompare !== 0) return categoryCompare
+        return a.name.localeCompare(b.name)
+      })
+  }, [items, search, selectedCategory, categoryNameById])
+
+  const categoryOptions = useMemo(() => {
+    const optionMap = new Map<string, string>()
+    categories.forEach((category) => {
+      optionMap.set(category._id, category.name)
+    })
+    items.forEach((item) => {
+      const categoryId = getCategoryId(item)
+      if (!categoryId) return
+      optionMap.set(categoryId, getCategoryName(item))
+    })
+
+    return [
+      { value: "all", label: "All Categories" },
+      ...Array.from(optionMap.entries())
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    ]
+  }, [categories, items, categoryNameById])
 
   const changedIds = useMemo(
     () =>
@@ -110,6 +168,18 @@ export default function SpecialItemsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="w-52">
+              <SelectValue placeholder="Sort by category" />
+            </SelectTrigger>
+            <SelectContent>
+              {categoryOptions.map((category) => (
+                <SelectItem key={category.value} value={category.value}>
+                  {category.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input
             placeholder="Search items..."
             value={search}
@@ -188,7 +258,7 @@ export default function SpecialItemsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        {typeof item.category === "string" ? item.category : item.category?.name ?? "Uncategorized"}
+                        {getCategoryName(item)}
                       </td>
                       <td className="px-4 py-3">
                         <Button
@@ -211,12 +281,12 @@ export default function SpecialItemsPage() {
                             return (
                               <Button
                                 key={day.value}
-                                size="xs"
+                                size="sm"
                                 variant={active ? "default" : "outline"}
                                 className={
                                   active
-                                    ? "bg-[#5B9FED] hover:bg-[#4A8FDD] text-white"
-                                    : "border-gray-200 text-gray-700"
+                                    ? "h-7 px-2 text-xs bg-[#5B9FED] hover:bg-[#4A8FDD] text-white"
+                                    : "h-7 px-2 text-xs border-gray-200 text-gray-700"
                                 }
                                 onClick={() => toggleDay(item._id, day.value)}
                               >
