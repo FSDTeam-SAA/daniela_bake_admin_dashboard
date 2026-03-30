@@ -31,13 +31,13 @@ import {
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Overview", href: "/dashboard" },
-  { icon: Tags, label: "Category Lists", href: "/dashboard/categories" },
-  { icon: Package, label: "Product Lists", href: "/dashboard/products" },
-  { icon: Package, label: "Special Items", href: "/dashboard/special-items" },
   { icon: ShoppingCart, label: "Order Lists", href: "/dashboard/orders" },
   { icon: ShoppingCart, label: "Paid Orders", href: "/dashboard/paid-orders" },
   { icon: Users, label: "Customer Lists", href: "/dashboard/customers" },
   { icon: MessageSquare, label: "Messages", href: "/dashboard/messages" },
+  { icon: Tags, label: "Category Lists", href: "/dashboard/categories" },
+  { icon: Package, label: "Product Lists", href: "/dashboard/products" },
+  { icon: Package, label: "Special Items", href: "/dashboard/special-items" },
 ];
 
 interface DashboardSidebarProps {
