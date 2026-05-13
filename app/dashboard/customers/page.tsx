@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner"
 import { format } from "date-fns"
 import Image from "next/image"
+import { useSession } from "next-auth/react"
 
 import {
   Search,
@@ -35,6 +36,8 @@ function useDebouncedValue<T>(value: T, delay = 400) {
 
 export default function CustomersPage() {
   const limit = 10
+  const { data: session, status: sessionStatus } = useSession()
+  const accessToken = (session?.user as any)?.accessToken as string | undefined
 
   const [page, setPage] = useState(1)
 
@@ -71,13 +74,14 @@ export default function CustomersPage() {
   }, [debouncedSearch, sort])
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ["users", params],
-    queryFn: () => usersAPI.getUsers(params),
+    queryKey: ["users", params, accessToken],
+    queryFn: () => usersAPI.getUsers(params, limit, accessToken),
+    enabled: sessionStatus !== "loading" && Boolean(accessToken),
     placeholderData: (prev) => prev, // ✅ v5 keep previous
   })
 
   const deleteUserMutation = useMutation({
-    mutationFn: (id: string) => usersAPI.deleteUser(id),
+    mutationFn: (id: string) => usersAPI.deleteUser(id, accessToken),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] })
       toast.success("User deleted successfully")

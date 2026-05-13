@@ -24,21 +24,29 @@ export const usersAPI = {
   getUsers: async (
     pageOrParams: number | UsersQueryParams = 1,
     limit = 10,
+    accessToken?: string,
   ): Promise<UsersPaginatedResponse> => {
     const params: UsersQueryParams =
       typeof pageOrParams === "number" ? { page: pageOrParams, limit } : pageOrParams
 
-    const response = await apiClient.get<UsersPaginatedResponse>("/users", { params })
+    const response = await apiClient.get<UsersPaginatedResponse>("/users", {
+      params,
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+    })
     return response.data
   },
 
-  getUserById: async (id: string) => {
-    const response = await apiClient.get(`/users/${id}`)
+  getUserById: async (id: string, accessToken?: string) => {
+    const response = await apiClient.get(`/users/${id}`, {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+    })
     return response.data.data
   },
 
-  deleteUser: async (id: string) => {
-    const response = await apiClient.delete(`/users/${id}`)
+  deleteUser: async (id: string, accessToken?: string) => {
+    const response = await apiClient.delete(`/users/${id}`, {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+    })
     return response.data
   },
 }

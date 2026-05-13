@@ -31,7 +31,7 @@ export function DashboardHeader({ user, onOpenSidebar }: DashboardHeaderProps) {
 
   const changePasswordMutation = useMutation({
     mutationFn: (data: { currentPassword: string; newPassword: string }) =>
-      authAPI.changePassword(data),
+      authAPI.changePassword(data, user?.accessToken),
     onSuccess: () => {
       toast.success("Password changed successfully");
       setShowPasswordDialog(false);

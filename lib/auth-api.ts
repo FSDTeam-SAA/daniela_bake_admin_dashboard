@@ -27,8 +27,13 @@ export const authAPI = {
     return response.data
   },
 
-  changePassword: async (data: { currentPassword: string; newPassword: string }) => {
-    const response = await apiClient.post("/user/change-password", data)
+  changePassword: async (
+    data: { currentPassword: string; newPassword: string },
+    accessToken?: string,
+  ) => {
+    const response = await apiClient.post("/auth/change-password", data, {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+    })
     return response.data
   },
 }
