@@ -44,3 +44,4 @@ coverage/
 .idea/
 *.swp
 *.swo
+config.bat
