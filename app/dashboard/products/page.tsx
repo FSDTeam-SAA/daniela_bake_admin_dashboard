@@ -51,7 +51,7 @@ export default function ProductsPage() {
     isLoading: isLoadingCategories,
   } = useQuery({
     queryKey: ["categories"],
-    queryFn: categoriesAPI.getCategories,
+    queryFn: () => categoriesAPI.getCategories({ limit: 1000 }),
   })
 
   const normalizedCategories: Category[] = useMemo(() => {

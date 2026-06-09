@@ -39,7 +39,7 @@ export default function CategoriesPage() {
     refetch,
   } = useQuery({
     queryKey: ["categories"],
-    queryFn: categoriesAPI.getCategories,
+    queryFn: () => categoriesAPI.getCategories({ limit: 1000 }),
   })
 
   // 🔧 Normalize API response into a plain Category[]

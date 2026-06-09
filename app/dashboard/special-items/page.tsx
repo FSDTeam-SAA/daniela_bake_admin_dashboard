@@ -51,7 +51,7 @@ export default function SpecialItemsPage() {
 
   const { data: categoriesData = [] } = useQuery({
     queryKey: ["categories"],
-    queryFn: categoriesAPI.getCategories,
+    queryFn: () => categoriesAPI.getCategories({ limit: 1000 }),
   })
 
   const categories: Category[] = useMemo(() => {

@@ -17,9 +17,15 @@ export type CategoriesListResponse = {
 
 export const categoriesAPI = {
   getCategories: async (
-    params: CategoryQueryParams = { limit: 1000 },
+    params: CategoryQueryParams = {},
   ): Promise<CategoriesListResponse> => {
-    const response = await apiClient.get("/categories", { params })
+    // Only forward known query params. This guards against callers (e.g.
+    // React Query, which passes its QueryFunctionContext as the first arg)
+    // accidentally overriding the default and leaking junk into the request.
+    const { page, limit = 1000, sort, name } = params ?? {}
+    const response = await apiClient.get("/categories", {
+      params: { page, limit, sort, name },
+    })
     return response.data.data
   },
 
