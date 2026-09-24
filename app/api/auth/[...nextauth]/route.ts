@@ -2,6 +2,55 @@ import NextAuth, { type NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { authAPI } from "@/lib/auth-api"
 
+const accessTokenLifetime = 14 * 60 * 1000 // Refresh before the backend's 15-minute expiry.
+
+type DashboardToken = {
+  accessToken?: string
+  refreshToken?: string
+  accessTokenExpires?: number
+  error?: "RefreshAccessTokenError"
+}
+
+const refreshes = new Map<string, Promise<DashboardToken>>()
+
+async function refreshAccessToken(token: DashboardToken): Promise<DashboardToken> {
+  const refreshToken = token.refreshToken
+  if (!refreshToken) return { ...token, error: "RefreshAccessTokenError" }
+
+  let pending = refreshes.get(refreshToken)
+  if (!pending) {
+    pending = (async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3001"}/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken }),
+          cache: "no-store",
+        })
+        if (!response.ok) throw new Error("Token refresh failed")
+
+        const result = await response.json()
+        if (!result.success || !result.data?.accessToken || !result.data?.refreshToken) {
+          throw new Error("Invalid token refresh response")
+        }
+
+        return {
+          ...token,
+          accessToken: result.data.accessToken,
+          refreshToken: result.data.refreshToken,
+          accessTokenExpires: Date.now() + accessTokenLifetime,
+          error: undefined,
+        }
+      } catch {
+        return { ...token, error: "RefreshAccessTokenError" as const }
+      }
+    })()
+    refreshes.set(refreshToken, pending)
+    void pending.then(() => refreshes.delete(refreshToken), () => refreshes.delete(refreshToken))
+  }
+  return pending
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -25,6 +74,7 @@ export const authOptions: NextAuthOptions = {
               name: response.data.user.name,
               role: response.data.user.role,
               accessToken: response.data.accessToken,
+              refreshToken: response.data.refreshToken,
             }
           }
 
@@ -39,10 +89,14 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.accessToken = (user as any).accessToken
+        token.refreshToken = (user as any).refreshToken
+        token.accessTokenExpires = Date.now() + accessTokenLifetime
         token.role = (user as any).role
         token.id = user.id
+        return token
       }
-      return token
+      if (Date.now() < Number(token.accessTokenExpires ?? 0)) return token
+      return { ...token, ...(await refreshAccessToken(token as unknown as DashboardToken)) }
     },
     async session({ session, token }) {
       if (session.user) {
@@ -50,6 +104,7 @@ export const authOptions: NextAuthOptions = {
         ;(session.user as any).role = token.role
         ;(session.user as any).id = token.id
       }
+      ;(session as any).error = token.error
       return session
     },
   },
@@ -59,7 +114,7 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 7 * 24 * 60 * 60, // Matches the backend refresh-token lifetime.
   },
   secret: process.env.NEXTAUTH_SECRET,
 }

@@ -73,7 +73,7 @@ export default function CustomersPage() {
     setPage(1)
   }, [debouncedSearch, sort])
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ["users", params, accessToken],
     queryFn: () => usersAPI.getUsers(params, limit, accessToken),
     enabled: sessionStatus !== "loading" && Boolean(accessToken),
@@ -199,6 +199,13 @@ export default function CustomersPage() {
               <Skeleton key={i} className="h-16" />
             ))}
           </div>
+        ) : isError ? (
+          <div className="py-8 text-center text-gray-600">
+            <p>Could not load customers.</p>
+            <Button variant="outline" className="mt-3" onClick={() => void refetch()}>
+              Try again
+            </Button>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -277,7 +284,7 @@ export default function CustomersPage() {
         )}
 
         {/* Pagination */}
-        <div className="flex items-center justify-between mt-6">
+        {!isError && <div className="flex items-center justify-between mt-6">
           <p className="text-sm text-gray-600">
             Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} from {total}
             {isFetching && !isLoading ? <span className="ml-2 text-xs text-gray-400">(Updating...)</span> : null}
@@ -321,7 +328,7 @@ export default function CustomersPage() {
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
-        </div>
+        </div>}
       </Card>
 
       {/* Customer Detail Dialog */}

@@ -1,21 +1,30 @@
+"use client"
+
 import type React from "react"
-import { getServerSession } from "next-auth/next"
-import { redirect } from "next/navigation"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { useEffect, useRef } from "react"
+import { signOut, useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard/shell"
 
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const session = await getServerSession(authOptions)
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const signingOut = useRef(false)
 
-  if (!session) {
-    redirect("/auth/login")
-  }
+  useEffect(() => {
+    if ((session as any)?.error === "RefreshAccessTokenError" && !signingOut.current) {
+      signingOut.current = true
+      void signOut({ callbackUrl: "/auth/login" })
+    } else if (status === "unauthenticated") {
+      router.replace("/auth/login")
+    }
+  }, [session, status, router])
 
-  return (
-    <DashboardShell user={session.user}>{children}</DashboardShell>
-  )
+  if (status !== "authenticated" || !session?.user || (session as any).error) return null
+
+  return <DashboardShell user={session.user}>{children}</DashboardShell>
 }

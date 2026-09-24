@@ -9,13 +9,41 @@ const apiClient: AxiosInstance = axios.create({
   },
 })
 
+let tokenRequest: Promise<string | null> | undefined
+let signingOut = false
+
+function endSession() {
+  if (signingOut || typeof window === "undefined") return
+  signingOut = true
+  void import("next-auth/react").then(({ signOut }) => signOut({ callbackUrl: "/auth/login" }))
+}
+
+function isPublicAuthRequest(url?: string) {
+  return url?.startsWith("/auth/") && !url.startsWith("/auth/change-password")
+}
+
 apiClient.interceptors.request.use(
-  (config) => {
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("accessToken")
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`
-      }
+  async (config) => {
+    if (typeof window === "undefined" || isPublicAuthRequest(config.url)) return config
+
+    if (!tokenRequest) {
+      tokenRequest = import("next-auth/react")
+        .then(({ getSession }) => getSession())
+        .then((session) => {
+          if ((session as any)?.error === "RefreshAccessTokenError") {
+            endSession()
+            return null
+          }
+          return (session?.user as any)?.accessToken ?? null
+        })
+    }
+
+    const pending = tokenRequest
+    try {
+      const token = await pending
+      if (token) config.headers.Authorization = `Bearer ${token}`
+    } finally {
+      if (tokenRequest === pending) tokenRequest = undefined
     }
     return config
   },
@@ -27,11 +55,8 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("accessToken")
-        window.location.href = "/auth/login"
-      }
+    if (error.response?.status === 401 && !isPublicAuthRequest(error.config?.url)) {
+      endSession()
     }
     return Promise.reject(error)
   },
